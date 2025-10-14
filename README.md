@@ -5,7 +5,7 @@ group hw for 'Cloud computing system'
 1. 在云端部署应用后端
 	- 找到一个可用的云（可以自己在虚拟机上部署OpenStack，也可以用AWS学生版）
 	- 使用云对象存储（Object Cloud Storage, 如AWS S3和OpenStack Swift）来存储用户数据
-	- 业务逻辑部署在云虚拟机（如AWS EC2)
+	- 业务逻辑部署在云虚拟机（如AWS EC2）
  2. 基础服务与多用户支撑(包括所有计算机网络课的作业内容) 
 	 1. 基础文件操作(上传、下载、列表、删除、创建目录)
 	 2. 用户认证和多用户管理
