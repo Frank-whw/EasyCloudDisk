@@ -11,6 +11,8 @@ public class EasyCloudDiskServer {
     // 处理并发请求 所以创建线程池
     private static final ExecutorService threadPool = Executors.newCachedThreadPool();
 
+    private static final int BUFFER_SIZE = 8192; // 缓冲区大小
+    private static final int SOCKET_TIMEOUT = 30000; // Socket超时时间
     /**
      * 服务端启动，监听客户端连接
      * 1. 统一的 CLOUD_DIR 作为云盘根目录，用于后续做路径约束与隔离
@@ -27,7 +29,7 @@ public class EasyCloudDiskServer {
                 // serverSocket.accept：等待并接受客户端连接，返回一个Socket对象，代表与客户端的连接
                 // 如果没有客户端连接，则阻塞在这里
                 Socket clientSocket = serverSocket.accept();
-                threadPool.execute(new ClientHandler(clientSocket));
+                threadPool.execute(new ClientHandler(clientSocket, CLOUD_DIR, BUFFER_SIZE, SOCKET_TIMEOUT));
             }
         } catch (Exception e) {
             System.err.println("服务端启动失败: " + e.getMessage());

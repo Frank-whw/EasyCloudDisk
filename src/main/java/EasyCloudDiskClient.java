@@ -12,6 +12,11 @@
 
 import java.io.*;
 import java.net.Socket;
+import java.util.ArrayList;
+import java.util.List;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
+import java.util.concurrent.Future;
 
 public class EasyCloudDiskClient {
     private static final String SERVER_HOST = "localhost";
@@ -61,9 +66,6 @@ public class EasyCloudDiskClient {
         }
     }
 
-
-
-
     /**
      * 多线程上传文件
      *
@@ -71,7 +73,20 @@ public class EasyCloudDiskClient {
      * @param remoteFilePath 云盘文件路径
      */
     public void uploadFileMultiThread(String localFilePath, String remoteFilePath) {
-        // TODO
+        if(!validateInput(localFilePath, remoteFilePath) || !isConnected()) return;
+        File file = new File(localFilePath);
+        long fileSize = file.length();
+        // 创建线程池并上传
+        ExecutorService threadPool = Executors.newFixedThreadPool(DEFAULT_TGREAD_COUNT);
+        List<Future<Boolean>> futures = createChunkUploadTasks(
+                threadPool, localFilePath, remoteFilePath, fileSize, DEFAULT_TGREAD_COUNT);
+        // 等待所有分块上传完成
+        boolean success = waitForChunkUploads(futures);
+        threadPool.shutdown();
+        if (success) {
+            combineChunks(new File(remoteFilePath).getName());
+            System.out.println("多线程上传完成");
+        }else System.out.println("多线程上传失败");
     }
 
     /**
@@ -187,4 +202,119 @@ public class EasyCloudDiskClient {
             System.err.println("上传失败: " + response);
         }
     }
+
+    /**
+     * 创建多线程上传任务
+     * @param threadPool 线程池
+     * @param localFilePath  本地文件路径
+     * @param remoteFilePath  云盘文件路径
+     * @param fileSize 文件大小
+     * @param threadCount 线程数
+     * @return List<Future<Boolean>>  任务列表
+     */
+    private List<Future<Boolean>> createChunkUploadTasks(ExecutorService threadPool, String localFilePath, String remoteFilePath, long fileSize, int threadCount){
+        List<Future<Boolean>> futures = new ArrayList<>();
+        long chunkSize = fileSize / threadCount;
+        for (int i = 0; i < threadCount; i++) {
+            long start = i * chunkSize;
+            long end = (i == threadCount - 1) ? fileSize : start + chunkSize;
+            futures.add(threadPool.submit(()-> uploadChunk(localFilePath, remoteFilePath, start, end)));
+        }
+        return futures;
+
+    }
+
+    /**
+     * 上传文件分块
+     * @param localFilePath  本地文件路径
+     * @param remoteFilePath  云盘文件路径
+     * @param start 开始位置
+     * @param end 结束位置
+     * @return true 上传成功
+     */
+    private boolean uploadChunk(String localFilePath, String remoteFilePath, long start, long end) {
+        try(Socket chunkSocket = new Socket(SERVER_HOST, SERVER_PORT);
+            DataOutputStream chunkOut = new DataOutputStream(chunkSocket.getOutputStream());
+            DataInputStream chunkIn = new DataInputStream(chunkSocket.getInputStream());)
+        {
+            long chunkSize = end - start;
+            // 发送分块上传命令
+            String chunkCommand = "UPLOAD_CHUNK " + remoteFilePath + " " + start + " " + chunkSize;
+            chunkOut.writeUTF(chunkCommand);
+            chunkOut.flush();
+            // 等待服务器响应
+            String chunkResponse = chunkIn.readUTF();
+            if (!"OK".equals(chunkResponse)) {
+                System.err.println("分块上传失败：" + chunkResponse);
+                return false;
+            }
+            // 传输文件分块数据
+            return transferFileChunkData(localFilePath, chunkOut, start, chunkSize);
+        }catch (IOException e){
+            System.err.println("分块上传错误："+e.getMessage());
+            return false;
+        }
+    }
+
+    /**
+     * 传输文件分块数据
+     * @param localFilePath  本地文件路径
+     * @param chunkOut  输出流
+     * @param start 块开始位置
+     * @param chunkSize 块的大小
+     * @return true 上传成功
+     */
+    private boolean transferFileChunkData(String localFilePath, DataOutputStream chunkOut, long start, long chunkSize) throws  IOException{
+        // 对于工具函数，直接抛出 异常，让调用者处理
+        // 使用 RandomAccessFile 可以随机访问文件，通过seek() 方法可以设置文件指针的位置，然后使用 read() 方法可以读取指定位置的字节。
+        try(RandomAccessFile raf = new RandomAccessFile(localFilePath, "r");) {
+            raf.seek(start);
+            byte[] buffer = new byte[BUFFER_SIZE];
+            long remaining = chunkSize;
+            while (remaining > 0) {
+                int read = raf.read(buffer, 0, (int) Math.min(buffer.length, remaining));
+                if(read == -1)  break; // 说明文件已读完
+                chunkOut.write(buffer, 0, read);
+                remaining -= read;
+            }
+            chunkOut.flush();
+        }
+        return true;
+    }
+
+    /**
+     * 等待分块上传完成
+     */
+    private boolean waitForChunkUploads(List<Future<Boolean>> futures){
+        // 记录success，而不是上传失败直接返回false，因为存在多个线程上传分块，如果某个分块上传失败，需要继续上传其他分块
+        boolean success = true;
+
+        for(int i = 0; i < futures.size(); i++){
+            try{
+                if(!futures.get(i).get()){
+                    System.err.println("分块 " + (i + 1) + " 上传失败");
+                    success = false;
+                }
+            } catch (Exception e){
+                System.err.println("分块 " + (i + 1) + " 上传异常：" + e.getMessage());
+                success = false;
+            }
+        }
+        return success;
+    }
+
+    /**
+     * 向服务器发送合并文件分块的命令
+     */
+    private void combineChunks(String remoteFilePath){
+        try{
+            out.writeUTF("COMBINE_CHUNKS " + remoteFilePath);
+            if(!in.readUTF().equals("COMBINE_COMPLETE")){
+                System.err.println("合并文件分块失败");
+            }
+        }catch (IOException e){
+            System.err.println("合并文件分块错误：" + e.getMessage());
+        }
+    }
+
 }
