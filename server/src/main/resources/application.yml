@@ -10,12 +10,12 @@ spring:
   datasource:
     url: jdbc:postgresql://localhost:5432/clouddisk
     username: root
-    password: ${DB_PASSWORD:your_password_here}
+    password: ${DB_PASSWORD:123456}
     driver-class-name: org.postgresql.Driver
 
   jpa:
     hibernate:
-      ddl-auto: validate
+      ddl-auto: update
     show-sql: false
     properties:
       hibernate:

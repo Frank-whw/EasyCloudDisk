@@ -17,8 +17,8 @@ import java.util.Collection;
 @Data // 自动生成getter和setter方法
 public class User implements UserDetails {
     @Id
-    @Column(name = "user_id")
-    private Long user_id;
+    @Column(name = "user_id", length = 36)
+    private String user_id;
 
     @Column(unique = true, nullable = false, name = "email")
     private String email;
