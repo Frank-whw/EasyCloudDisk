@@ -8,6 +8,7 @@ import org.springframework.security.core.GrantedAuthority;
 import java.time.LocalDateTime;
 import java.util.Collections;
 import java.util.Collection;
+import java.util.UUID;
 
 /**
  *  用户实体类
@@ -17,6 +18,7 @@ import java.util.Collection;
 @Data // 自动生成getter和setter方法
 public class User implements UserDetails {
     @Id
+    @GeneratedValue(strategy = GenerationType.UUID)
     @Column(name = "user_id", length = 36)
     private String user_id;
 
@@ -34,6 +36,7 @@ public class User implements UserDetails {
 
     public User() {}
     public User(String email, String password_hash){
+        this.user_id = UUID.randomUUID().toString();
         this.email = email;
         this.password_hash = password_hash;
         this.created_at = LocalDateTime.now();
@@ -41,6 +44,9 @@ public class User implements UserDetails {
     }
     @PrePersist
     protected void onCreate() {
+        if (this.user_id == null) {
+            this.user_id = UUID.randomUUID().toString();
+        }
         this.created_at = LocalDateTime.now();
         this.updated_at = LocalDateTime.now();
     }

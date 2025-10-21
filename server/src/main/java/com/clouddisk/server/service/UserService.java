@@ -49,9 +49,9 @@ public class UserService {
         // 3. 保存用户到数据库
         User savedUser = userRepository.save(user);
         // 4. 生成JWT令牌
-        String token = jwtTokenProvider.generateToken(savedUser.getUser_id().toString());
+        String token = jwtTokenProvider.generateToken(savedUser.getUser_id());
         // 5. 返回认证响应
-        return new AuthResponse(token, savedUser.getUser_id().toString(), savedUser.getEmail());
+        return new AuthResponse(token, savedUser.getUser_id(), savedUser.getEmail());
     }
     /**
      * 登录
@@ -71,9 +71,9 @@ public class UserService {
         User user = userRepository.findByEmail(authRequest.getEmail())
                 .orElseThrow(() -> new Exception("用户不存在"));
         // 3. 生成JWT令牌
-        String token = jwtTokenProvider.generateToken(user.getUser_id().toString());
+        String token = jwtTokenProvider.generateToken(user.getUser_id());
         // 4. 返回认证响应
-        return new AuthResponse(token, user.getUser_id().toString(), user.getEmail());
+        return new AuthResponse(token, user.getUser_id(), user.getEmail());
     }
     /**
      * 获取当前用户信息
