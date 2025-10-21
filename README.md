@@ -1,6 +1,34 @@
 # SimpleCloudDrive
 group hw for 'Cloud computing system'
 
+## 数据库结构
+```sql
+-- 用户表（补充created_at和updated_at的数据类型为TIMESTAMP）
+CREATE TABLE users (
+    user_id VARCHAR(36) PRIMARY KEY,
+    email VARCHAR(100) NOT NULL UNIQUE,  -- 邮箱通常设为唯一
+    password_hash VARCHAR(255) NOT NULL,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,  -- 默认当前时间
+    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP   -- 默认当前时间
+);
+
+-- 文件表（补充file_path类型、name长度，修正updated_at）
+CREATE TABLE files (
+    file_id VARCHAR(36) PRIMARY KEY,
+    user_id VARCHAR(36) NOT NULL,
+    name VARCHAR(255) NOT NULL,  -- 文件名建议指定长度
+    file_path VARCHAR(1024),     -- 文件路径
+    s3_key VARCHAR(1024) NOT NULL,         -- S3存储键
+    file_size BIGINT,
+    content_hash VARCHAR(64),              -- 用于去重（如MD5/SHA256）
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    -- 关联users表的外键（确保file属于存在的用户，可选但推荐）
+    FOREIGN KEY (user_id) REFERENCES users(user_id) ON DELETE CASCADE
+);
+
+```
+
 ## Lab要求--用java做一个简易网盘
 1. 在云端部署应用后端
 	- [x] 找到一个可用的云（可以自己在虚拟机上部署OpenStack，也可以用AWS学生版）
