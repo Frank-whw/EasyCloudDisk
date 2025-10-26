@@ -29,6 +29,107 @@ CREATE TABLE files (
 
 ```
 
+## 接口文档
+
+- 基础路径：`/` 服务器端口：`8080`
+- 认证方式：`JWT`（登录后返回 `token`，在后续请求头 `Authorization: Bearer <token>`）
+- 统一响应：`ApiResponse<T>`
+  - `success`: `boolean` 成功标识
+  - `message`: `string` 文本消息
+  - `code`: `number` 业务码（成功`200`，常见错误见下）
+  - `data`: `T | null` 具体数据
+
+### 认证模块
+
+- `POST /auth/register`
+  - 描述：用户注册
+  - 请求
+    - Headers：`Content-Type: application/json`
+    - Body：
+      ```json
+      { "email": "string", "password": "string(6-20)" }
+      ```
+  - 响应
+    - 200：
+      ```json
+      { "success": true, "message": "注册成功", "code": 200, "data": { "userId": "string", "email": "string", "token": "jwt" } }
+      ```
+    - 400：`EMAIL_EXISTS`（邮箱已存在）
+
+- `POST /auth/login`
+  - 描述：用户登录
+  - 请求
+    - Headers：`Content-Type: application/json`
+    - Body：
+      ```json
+      { "email": "string", "password": "string" }
+      ```
+  - 响应
+    - 200：
+      ```json
+      { "success": true, "message": "登录成功", "code": 200, "data": { "userId": "string", "email": "string", "token": "jwt" } }
+      ```
+    - 401：`INVALID_CREDENTIALS`（账户或密码错误）
+
+### 文件模块（需认证）
+
+- `GET /files`
+  - 描述：获取当前用户文件列表
+  - 请求
+    - Headers：`Authorization: Bearer <token>`
+  - 响应
+    - 200：
+      ```json
+      { "success": true, "message": "列表成功", "code": 200, "data": [
+        { "fileId": "string", "userId": "string", "name": "string", "filePath": "string", "s3Key": "string", "fileSize": 123, "contentHash": "string", "createdAt": "ISO8601", "updatedAt": "ISO8601" }
+      ] }
+      ```
+
+- `POST /files/upload`
+  - 描述：上传文件
+  - 请求
+    - Headers：`Authorization: Bearer <token>`
+    - Content-Type：`multipart/form-data`
+    - Form fields：`file`（二进制文件）、`filePath`（可选逻辑路径）
+  - 响应
+    - 200：
+      ```json
+      { "success": true, "message": "上传成功", "code": 200, "data": { "fileId": "string", "name": "string", "fileSize": 123, "filePath": "string" } }
+      ```
+    - 409：`DUPLICATE_FILE`（基于`contentHash`的文件级去重命中）
+
+- `GET /files/{fileId}/download`
+  - 描述：下载文件内容
+  - 请求
+    - Headers：`Authorization: Bearer <token>`
+  - 响应
+    - 200：`application/octet-stream` 二进制流
+    - 404：`FILE_NOT_FOUND`
+
+- `DELETE /files/{fileId}`
+  - 描述：删除文件（同时删除对象存储记录）
+  - 请求
+    - Headers：`Authorization: Bearer <token>`
+  - 响应
+    - 200：
+      ```json
+      { "success": true, "message": "删除成功", "code": 200 }
+      ```
+    - 404：`FILE_NOT_FOUND`
+
+### 客户端同步建议（参考）
+- 监听本地同步目录事件（创建/修改/删除/重命名）并调用上述API。
+- 大文件增量同步可采用滚动哈希；断点续传建议基于分块与服务端`/files/upload`扩展。
+
+### 错误代码定义
+- `200 OK` 成功
+- `400 EMAIL_EXISTS` 注册时邮箱已存在
+- `401 INVALID_CREDENTIALS` 登录凭据错误或未认证访问
+- `403 FORBIDDEN` 无权限访问资源
+- `404 FILE_NOT_FOUND` 文件不存在
+- `409 DUPLICATE_FILE` 文件去重冲突
+- `500 INTERNAL_ERROR` 服务器内部错误
+
 ## Lab要求--用java做一个简易网盘
 1. 在云端部署应用后端
 	- [x] 找到一个可用的云（可以自己在虚拟机上部署OpenStack，也可以用AWS学生版）
