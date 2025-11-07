@@ -18,13 +18,23 @@ import java.nio.charset.StandardCharsets;
 public class AuthApiClient {
     // 服务器基础URL，例如 "http://localhost:8080"
     private final String baseUrl;
+    private final CloseableHttpClient httpClient;
     
     // Jackson ObjectMapper 实例，用于JSON序列化和反序列化
     // 将其作为字段存储是为了避免重复创建ObjectMapper实例，提高性能
-    private final ObjectMapper objectMapper;
+n    private final ObjectMapper objectMapper;
 
     public AuthApiClient(String baseUrl) {
+        this(baseUrl, HttpClients.createDefault());
+    }
+
+    public AuthApiClient(CloseableHttpClient httpClient) {
+        this("http://ec2-54-95-61-230.ap-northeast-1.compute.amazonaws.com:8080", httpClient);
+    }
+
+    public AuthApiClient(String baseUrl, CloseableHttpClient httpClient) {
         this.baseUrl = baseUrl;
+        this.httpClient = httpClient;
         // 初始化 ObjectMapper 实例
         // ObjectMapper 是线程安全的，可以复用
         this.objectMapper = new ObjectMapper();
@@ -32,29 +42,41 @@ public class AuthApiClient {
 
     /**
      * 用户登录
-     * @param request 登录请求
-     * @return 认证响应
+     * @param email 邮箱
+     * @param password 密码
+     * @return JWT令牌，如果登录失败返回null
      */
-    public AuthResponse login(AuthRequest request) {
+    public String login(String email, String password) {
         try {
-            return sendAuthRequest("/auth/login", request);
-        } catch (Exception e) {
-            // TODO: 实现更完善的异常处理
-            throw new RuntimeException("登录请求失败", e);
+            AuthRequest request = new AuthRequest(email, password);
+            AuthResponse response = sendAuthRequest("/auth/login", request);
+            return response.getToken();
+        } catch (IOException | ParseException e) {
+            System.err.println("登录请求失败: " + e.getMessage());
+            return null;
+        } catch (RuntimeException e) {
+            System.err.println("登录失败: " + e.getMessage());
+            return null;
         }
     }
 
     /**
      * 用户注册
-     * @param request 注册请求
-     * @return 认证响应
+     * @param email 邮箱
+     * @param password 密码
+     * @return 注册是否成功
      */
-    public AuthResponse register(AuthRequest request) {
+    public boolean register(String email, String password) {
         try {
-            return sendAuthRequest("/auth/register", request);
-        } catch (Exception e) {
-            // TODO: 实现更完善的异常处理
-            throw new RuntimeException("注册请求失败", e);
+            AuthRequest request = new AuthRequest(email, password);
+            AuthResponse response = sendAuthRequest("/auth/register", request);
+            return response != null && response.getToken() != null;
+        } catch (IOException | ParseException e) {
+            System.err.println("注册请求失败: " + e.getMessage());
+            return false;
+        } catch (RuntimeException e) {
+            System.err.println("注册失败: " + e.getMessage());
+            return false;
         }
     }
 
@@ -67,32 +89,28 @@ public class AuthApiClient {
      * @throws ParseException 解析异常
      */
     private AuthResponse sendAuthRequest(String endpoint, AuthRequest request) throws IOException, ParseException {
-        // 使用 try-with-resources 语句确保 HTTP 客户端在使用完毕后正确关闭
-        // 这是必要的，因为 CloseableHttpClient 实现了 Closeable 接口
-        try (CloseableHttpClient httpClient = HttpClients.createDefault()) {
-            // 创建一个 HTTP POST 请求对象，指定完整的 URL
-            // baseUrl + endpoint 组合构成完整的请求地址
-            HttpPost httpPost = new HttpPost(baseUrl + endpoint);
-            
-            // 设置请求头，指定内容类型为 JSON
-            // 这是必须的，因为服务端期望接收 JSON 格式的数据
-            httpPost.setHeader("Content-Type", "application/json");
+        // 创建一个 HTTP POST 请求对象，指定完整的 URL
+        // baseUrl + endpoint 组合构成完整的请求地址
+        HttpPost httpPost = new HttpPost(baseUrl + endpoint);
+        
+        // 设置请求头，指定内容类型为 JSON
+        // 这是必须的，因为服务端期望接收 JSON 格式的数据
+        httpPost.setHeader("Content-Type", "application/json");
 
-            // 使用 Jackson ObjectMapper 将请求对象序列化为 JSON 字符串
-            // 这样可以确保数据以正确的格式发送到服务端
-            String json = objectMapper.writeValueAsString(request);
-            
-            // 将 JSON 字符串包装为 StringEntity 并设置字符编码
-            // 使用 StandardCharsets.UTF_8 确保字符编码一致
-            httpPost.setEntity(new StringEntity(json, StandardCharsets.UTF_8));
+        // 使用 Jackson ObjectMapper 将请求对象序列化为 JSON 字符串
+        // 这样可以确保数据以正确的格式发送到服务端
+        String json = objectMapper.writeValueAsString(request);
+        
+        // 将 JSON 字符串包装为 StringEntity 并设置字符编码
+        // 使用 StandardCharsets.UTF_8 确保字符编码一致
+        httpPost.setEntity(new StringEntity(json, StandardCharsets.UTF_8));
 
-            // 执行 HTTP 请求并处理响应
-            // 使用 httpClient.execute() 方法发送请求并接收响应
-            // 第二个参数是一个 ResponseHandler，用于处理响应并返回结果
-            return httpClient.execute(httpPost, response -> {
-                return handleAuthResponse(response);
-            });
-        }
+        // 执行 HTTP 请求并处理响应
+        // 使用 httpClient.execute() 方法发送请求并接收响应
+        // 第二个参数是一个 ResponseHandler，用于处理响应并返回结果
+        return httpClient.execute(httpPost, response -> {
+            return handleAuthResponse(response);
+        });
     }
 
     /**

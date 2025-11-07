@@ -8,6 +8,7 @@ import org.apache.hc.client5.http.impl.classic.CloseableHttpClient;
 import org.apache.hc.client5.http.impl.classic.HttpClients;
 
 import java.io.IOException;
+import java.util.concurrent.TimeUnit;
 
 @Data
 public class ClientRuntimeContext {
@@ -25,14 +26,25 @@ public class ClientRuntimeContext {
         // 初始化配置
         if(this.config == null) this.config = new ClientProperties();
 
-        // 初始化HTTP客户端
-        if(this.httpClient == null) this.httpClient = HttpClients.createDefault();
+        // 初始化HTTP客户端（带连接池配置）
+        if(this.httpClient == null) this.httpClient = createHttpClient();
 
         // 创建同步管理器
         if(this.syncManager == null) this.syncManager = new SyncManager();
 
         // 创建文件监听器
         if(this.directoryWatcher == null) this.directoryWatcher = new DirectoryWatcher();
+    }
+
+    /**
+     * 创建带连接池配置的HTTP客户端
+     */
+    private CloseableHttpClient createHttpClient() {
+        return HttpClients.custom()
+                .setMaxConnTotal(100) // 最大连接数
+                .setMaxConnPerRoute(20) // 每个路由的最大连接数
+                .setConnectionTimeToLive(30, TimeUnit.SECONDS) // 连接存活时间
+                .build();
     }
     /**
      * 关闭并清理资源
