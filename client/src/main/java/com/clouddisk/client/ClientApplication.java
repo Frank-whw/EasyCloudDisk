@@ -2,17 +2,13 @@ package com.clouddisk.client;
 
 import com.clouddisk.client.http.AuthApiClient;
 import com.clouddisk.client.http.FileApiClient;
-import com.clouddisk.client.model.User;
-import com.clouddisk.client.sync.SyncManager;
-import com.clouddisk.client.config.ClientProperties;
-import com.clouddisk.client.util.FileUtils;
+
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.boot.CommandLineRunner;
 import org.springframework.boot.SpringApplication;
 import org.springframework.boot.autoconfigure.SpringBootApplication;
 
 import java.io.File;
-import java.io.IOException;
 import java.util.Scanner;
 import java.util.concurrent.Executors;
 import java.util.concurrent.ScheduledExecutorService;
@@ -401,3 +397,4 @@ public class ClientApplication implements CommandLineRunner {
         log.info("客户端已关闭");
         System.exit(0);
     }
+}

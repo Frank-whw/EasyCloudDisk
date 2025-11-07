@@ -2,11 +2,28 @@ package com.clouddisk.client.http;
 
 import com.clouddisk.client.model.FileMetadata;
 import com.clouddisk.client.model.FileUploadRequest;
+import org.apache.hc.client5.http.impl.classic.CloseableHttpClient;
+import org.apache.hc.client5.http.impl.classic.HttpClients;
 
 import java.nio.file.Path;
 import java.util.List;
 
 public class FileApiClient {
+    private final String baseUrl;
+    private final CloseableHttpClient httpClient;
+
+    public FileApiClient(String baseUrl) {
+        this(baseUrl, HttpClients.createDefault());
+    }
+
+    public FileApiClient(CloseableHttpClient httpClient) {
+        this("http://ec2-54-95-61-230.ap-northeast-1.compute.amazonaws.com:8080", httpClient);
+    }
+
+    public FileApiClient(String baseUrl, CloseableHttpClient httpClient) {
+        this.baseUrl = baseUrl;
+        this.httpClient = httpClient;
+    }
     
     /**
      * 获取文件列表

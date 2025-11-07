@@ -1,12 +1,10 @@
 package com.clouddisk.client.config;
 
-import lombok.AllArgsConstructor;
 import lombok.Data;
-import lombok.NoArgsConstructor;
 import org.springframework.boot.context.properties.ConfigurationProperties;
 import org.springframework.stereotype.Component;
 
-import javax.annotation.PostConstruct;
+import jakarta.annotation.PostConstruct;
 import java.io.File;
 
 @Data
@@ -51,5 +49,14 @@ public class ClientProperties {
         if (!syncDirFile.isDirectory()) {
             throw new IllegalArgumentException("同步目录必须是一个目录: " + syncDir);
         }
+    }
+
+
+    /**
+     * 获取是否自动同步
+     * @return
+     */
+    public boolean isEnableAutoSync() {
+        return enableAutoSync;
     }
 }

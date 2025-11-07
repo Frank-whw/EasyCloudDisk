@@ -6,6 +6,9 @@ import com.clouddisk.client.sync.SyncManager;
 import lombok.Data;
 import org.apache.hc.client5.http.impl.classic.CloseableHttpClient;
 import org.apache.hc.client5.http.impl.classic.HttpClients;
+import org.apache.hc.client5.http.impl.io.PoolingHttpClientConnectionManager;
+import org.apache.hc.client5.http.config.ConnectionConfig;
+import org.apache.hc.core5.util.TimeValue;
 
 import java.io.IOException;
 import java.util.concurrent.TimeUnit;
@@ -40,10 +43,16 @@ public class ClientRuntimeContext {
      * 创建带连接池配置的HTTP客户端
      */
     private CloseableHttpClient createHttpClient() {
+        PoolingHttpClientConnectionManager connectionManager = new PoolingHttpClientConnectionManager();
+        connectionManager.setMaxTotal(100);
+        connectionManager.setDefaultMaxPerRoute(20);
+        connectionManager.setDefaultConnectionConfig(
+                ConnectionConfig.custom()
+                        .setTimeToLive(TimeValue.of(30, TimeUnit.SECONDS))
+                        .build());
+        
         return HttpClients.custom()
-                .setMaxConnTotal(100) // 最大连接数
-                .setMaxConnPerRoute(20) // 每个路由的最大连接数
-                .setConnectionTimeToLive(30, TimeUnit.SECONDS) // 连接存活时间
+                .setConnectionManager(connectionManager)
                 .build();
     }
     /**
