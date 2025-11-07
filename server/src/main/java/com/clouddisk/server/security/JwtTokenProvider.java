@@ -58,7 +58,13 @@ public class JwtTokenProvider {
      * @return 验证结果
      */
     public boolean validateToken(String token) {
-        return getClaimsFromToken(token) != null;
+        try {
+            return getClaimsFromToken(token) != null && !isTokenExpired(token);
+        } catch (Exception e) {
+            // 记录具体的验证失败原因
+            System.err.println("JWT验证失败: " + e.getMessage());
+            return false;
+        }
     }
 
     /**
@@ -77,7 +83,50 @@ public class JwtTokenProvider {
      * @return 过期时间
      */
     public Date getExpirationDateFromToken(String token) {
-        return getClaimsFromToken(token).getExpiration();
+        return getClaimFromToken(token, Claims::getExpiration);
+    }
+
+    /**
+     * 检查JWT令牌是否过期
+     * @param token JWT令牌
+     * @return 是否过期
+     */
+    private boolean isTokenExpired(String token) {
+        Date expiration = getExpirationDateFromToken(token);
+        return expiration != null && expiration.before(new Date());
+    }
+
+    /**
+     * 获取JWT令牌的Claims
+     * @param token JWT令牌
+     * @return Claims对象，如果解析失败返回null
+     */
+    private Claims getClaimsFromToken(String token) {
+        try {
+            return Jwts.parserBuilder()
+                    .setSigningKey(jwtSecret)
+                    .build()
+                    .parseClaimsJws(token)
+                    .getBody();
+        } catch (SignatureException e) {
+            System.err.println("JWT签名验证失败: " + e.getMessage());
+            return null;
+        } catch (MalformedJwtException e) {
+            System.err.println("JWT格式错误: " + e.getMessage());
+            return null;
+        } catch (ExpiredJwtException e) {
+            System.err.println("JWT已过期: " + e.getMessage());
+            return null;
+        } catch (UnsupportedJwtException e) {
+            System.err.println("不支持的JWT: " + e.getMessage());
+            return null;
+        } catch (IllegalArgumentException e) {
+            System.err.println("JWT参数非法: " + e.getMessage());
+            return null;
+        } catch (Exception e) {
+            System.err.println("JWT解析失败: " + e.getMessage());
+            return null;
+        }
     }
     /**
      * 解析JWT令牌
