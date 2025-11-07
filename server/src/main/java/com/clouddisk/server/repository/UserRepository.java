@@ -12,7 +12,7 @@ import java.util.Optional;
  * 继承 JpaRepository 提供基础CURD操作
  */
 @Repository
-public interface UserRepository extends JpaRepository<User, Long> {
+public interface UserRepository extends JpaRepository<User, String> {
     /**
      * 通过邮箱查找用户
      * @param email 邮箱
@@ -33,5 +33,6 @@ public interface UserRepository extends JpaRepository<User, Long> {
      */
     @Query("SELECT u from User u WHERE u.user_id = :user_id")
     Optional<User> findByUserId(String user_id);
+
 
 }
