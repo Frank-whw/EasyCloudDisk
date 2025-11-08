@@ -41,8 +41,8 @@ public class ClientRuntimeContext {
         // 初始化HTTP客户端（带连接池配置）
         if(this.httpClient == null) this.httpClient = createHttpClient();
 
-        // 创建文件API客户端
-        if(this.fileApiClient == null) this.fileApiClient = new FileApiClient(this.httpClient);
+        // 创建文件API客户端（使用配置的服务器地址）
+        if(this.fileApiClient == null) this.fileApiClient = new FileApiClient(config.getServerUrl(), this.httpClient);
 
         // 创建同步管理器
         if(this.syncManager == null) this.syncManager = new SyncManager();

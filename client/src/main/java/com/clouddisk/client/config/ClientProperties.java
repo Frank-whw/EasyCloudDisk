@@ -11,7 +11,7 @@ import java.io.File;
 @Component
 @ConfigurationProperties(prefix = "client")
 public class ClientProperties {
-    private String serverUrl = "http://ec2-54-95-61-230.ap-northeast-1.compute.amazonaws.com:8080";
+    private String serverUrl = "http://localhost:8080";
     private String syncDir = "./local"; // 同步目录
     private String compressStrategy = "zip"; // 可选：zip、tar
     private Boolean enableAutoSync = true;

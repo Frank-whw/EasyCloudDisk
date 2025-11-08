@@ -70,9 +70,9 @@ public class ClientApplication implements CommandLineRunner {
         context = new ClientRuntimeContext();
         context.initialize();
         
-        // 初始化API客户端
-        authApiClient = new AuthApiClient(context.getHttpClient());
-        fileApiClient = new FileApiClient(context.getHttpClient());
+        // 初始化API客户端（使用配置的服务器地址）
+        authApiClient = new AuthApiClient(context.getConfig().getServerUrl());
+        fileApiClient = new FileApiClient(context.getConfig().getServerUrl(), context.getHttpClient());
         
         // 启动文件监听
         context.getSyncManager().startWatching();

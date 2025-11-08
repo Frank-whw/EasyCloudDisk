@@ -1,0 +1,7 @@
+client:
+  server-url: ${CLIENT_SERVER_URL:http://localhost:8080}
+  sync-dir: ${CLIENT_SYNC_DIR:./local}
+  compress-strategy: ${CLIENT_COMPRESS_STRATEGY:zip}
+  enable-auto-sync: ${CLIENT_ENABLE_AUTO_SYNC:true}
+  email: ${CLIENT_EMAIL:}
+  password: ${CLIENT_PASSWORD:}

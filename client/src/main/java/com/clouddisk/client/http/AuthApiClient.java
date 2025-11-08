@@ -28,10 +28,6 @@ public class AuthApiClient {
         this(baseUrl, HttpClients.createDefault());
     }
 
-    public AuthApiClient(CloseableHttpClient httpClient) {
-        this("http://ec2-54-95-61-230.ap-northeast-1.compute.amazonaws.com:8080", httpClient);
-    }
-
     public AuthApiClient(String baseUrl, CloseableHttpClient httpClient) {
         this.baseUrl = baseUrl;
         this.httpClient = httpClient;
