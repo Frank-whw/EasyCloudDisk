@@ -22,7 +22,7 @@ public class AuthApiClient {
     
     // Jackson ObjectMapper 实例，用于JSON序列化和反序列化
     // 将其作为字段存储是为了避免重复创建ObjectMapper实例，提高性能
-n    private final ObjectMapper objectMapper;
+    private final ObjectMapper objectMapper;
 
     public AuthApiClient(String baseUrl) {
         this(baseUrl, HttpClients.createDefault());

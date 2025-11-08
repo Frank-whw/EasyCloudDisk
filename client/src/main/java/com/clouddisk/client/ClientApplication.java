@@ -3,12 +3,15 @@ package com.clouddisk.client;
 import com.clouddisk.client.http.AuthApiClient;
 import com.clouddisk.client.http.FileApiClient;
 
+import com.clouddisk.client.sync.FileEvent;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.boot.CommandLineRunner;
 import org.springframework.boot.SpringApplication;
 import org.springframework.boot.autoconfigure.SpringBootApplication;
 
 import java.io.File;
+import java.nio.file.Path;
+import java.nio.file.Paths;
 import java.util.Scanner;
 import java.util.concurrent.Executors;
 import java.util.concurrent.ScheduledExecutorService;
@@ -71,14 +74,8 @@ public class ClientApplication implements CommandLineRunner {
         authApiClient = new AuthApiClient(context.getHttpClient());
         fileApiClient = new FileApiClient(context.getHttpClient());
         
-        // 检查同步目录
-        File syncDir = new File(context.getConfig().getSyncDir());
-        if (!syncDir.exists()) {
-            if (!syncDir.mkdirs()) {
-                log.error("无法创建同步目录: {}", syncDir.getAbsolutePath());
-                throw new RuntimeException("同步目录创建失败");
-            }
-        }
+        // 启动文件监听
+        context.getSyncManager().startWatching();
         
         log.info("运行时上下文初始化完成");
         return context;
@@ -207,15 +204,12 @@ public class ClientApplication implements CommandLineRunner {
         try {
             log.debug("开始文件同步...");
             
-            // 获取本地文件列表
-            File syncDir = new File(context.getConfig().getSyncDir());
-            File[] localFiles = syncDir.listFiles();
-            
-            // 获取远程文件列表
-            // TODO: 实现远程文件列表获取
-            
-            // 执行同步逻辑
-            // TODO: 实现具体的同步算法
+            if (context != null && context.getSyncManager() != null) {
+                // 同步远程变更
+                context.getSyncManager().synchronizeRemoteChanges();
+            } else {
+                log.warn("同步管理器未初始化");
+            }
             
             log.debug("文件同步完成");
             
@@ -314,8 +308,22 @@ public class ClientApplication implements CommandLineRunner {
      * 上传文件
      */
     private static void uploadFile(String filename) {
-        // TODO: 实现文件上传功能
-        System.out.println("文件上传功能待实现");
+        try {
+            Path filePath = Paths.get(context.getConfig().getSyncDir(), filename);
+            // 检查文件是否存在
+            if (!filePath.toFile().exists()) {
+                System.out.println("文件不存在: " + filename);
+                System.out.println("请确保文件存在于同步目录中: " + context.getConfig().getSyncDir());
+                return;
+            }
+            context.getSyncManager().handleLocalEvent(
+                new FileEvent(FileEvent.EventType.CREATE, filePath, null)
+            );
+            System.out.println("文件上传任务已提交: " + filename);
+        } catch (Exception e) {
+            log.error("上传文件失败: " + filename, e);
+            System.out.println("上传文件失败: " + e.getMessage());
+        }
     }
 
     /**
