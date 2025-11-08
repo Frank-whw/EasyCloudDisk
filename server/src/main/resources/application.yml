@@ -7,33 +7,20 @@ server:
 spring:
   application:
     name: clouddisk-server
-
-  datasource:
-    url: jdbc:postgresql://localhost:5432/clouddisk
-    username: clouddisk
-    password: ${DB_PASSWORD:123456}
-    driver-class-name: org.postgresql.Driver
-
-  jpa:
-    hibernate:
-      ddl-auto: update
-    show-sql: false
-    properties:
-      hibernate:
-        dialect: org.hibernate.dialect.PostgreSQLDialect
-        format_sql: true
+  profiles:
+    active: dev
 
   servlet:
     multipart:
       max-file-size: 100MB
       max-request-size: 100MB
 
-# JWT配置
+# JWT配置（通用）
 jwt:
   secret: ${JWT_SECRET:your-secret-key-here-must-be-at-least-256-bits}
   expiration: 86400000 # 24小时
 
-# AWS配置
+# AWS配置（通用）
 aws:
   s3:
     bucket-name: ${AWS_S3_BUCKET:clouddisk-bucket}
@@ -42,7 +29,7 @@ aws:
     access-key: ${AWS_ACCESS_KEY:your-access-key}
     secret-key: ${AWS_SECRET_KEY:your-secret-key}
 
-# 日志配置
+# 日志配置（通用）
 logging:
   level:
     com.clouddisk: DEBUG
