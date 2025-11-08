@@ -26,15 +26,22 @@ public class S3ServiceImpl implements S3Service {
         try {
             log.info("上传文件到S3，bucket: {}, key: {}", bucketName, s3Key);
             
+            // 处理可能为null的内容类型，设置为默认值
+            String contentType = file.getContentType();
+            if (contentType == null || contentType.isBlank()) {
+                contentType = "application/octet-stream";
+            }
+
             PutObjectRequest putObjectRequest = PutObjectRequest.builder()
                     .bucket(bucketName)
                     .key(s3Key)
-                    .contentType(file.getContentType())
+                    .contentType(contentType)
                     .contentLength(file.getSize())
                     .build();
             
-            RequestBody requestBody = RequestBody.fromInputStream(
-                    file.getInputStream(), file.getSize());
+            // 使用字节数组避免输入流资源管理问题
+            byte[] data = file.getBytes();
+            RequestBody requestBody = RequestBody.fromBytes(data);
             
             s3Client.putObject(putObjectRequest, requestBody);
             
