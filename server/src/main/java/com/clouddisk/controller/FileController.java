@@ -30,10 +30,10 @@ public class FileController {
      * 获取用户文件列表
      */
     @GetMapping
-    public ApiResponse<List<FileResponse>> getUserFiles(@AuthenticationPrincipal UserDetails userDetails) {
+    public ApiResponse<List<FileResponse>> getUserFiles(@AuthenticationPrincipal String userIdPrincipal) {
         try {
             // 从UserDetails中获取用户ID
-            UUID userId = UUID.fromString(userDetails.getUsername());
+            UUID userId = UUID.fromString(userIdPrincipal);
             List<FileResponse> files = fileService.getUserFiles(userId);
             return ApiResponse.success("列表成功", files);
         } catch (Exception e) {
@@ -47,7 +47,7 @@ public class FileController {
      */
     @PostMapping("/upload")
     public ApiResponse<FileUploadResponse> uploadFile(
-            @AuthenticationPrincipal UserDetails userDetails,
+            @AuthenticationPrincipal String userIdPrincipal,
             @RequestParam("file") MultipartFile file,
             @RequestParam(value = "filePath", required = false, defaultValue = "/") String filePath) {
         
@@ -61,8 +61,8 @@ public class FileController {
                 return ApiResponse.error("文件大小不能超过100MB");
             }
             
-            // 从UserDetails中获取用户ID
-            UUID userId = UUID.fromString(userDetails.getUsername());
+            // 从principal中获取用户ID
+            UUID userId = UUID.fromString(userIdPrincipal);
             
             FileUploadResponse response = fileService.uploadFile(userId, file, filePath);
             return ApiResponse.success("上传成功", response);
@@ -81,12 +81,12 @@ public class FileController {
      */
     @GetMapping("/{fileId}/download")
     public ResponseEntity<ByteArrayResource> downloadFile(
-            @AuthenticationPrincipal UserDetails userDetails,
+            @AuthenticationPrincipal String userIdPrincipal,
             @PathVariable UUID fileId) {
         
         try {
-            // 从UserDetails中获取用户ID
-            UUID userId = UUID.fromString(userDetails.getUsername());
+            // 从principal中获取用户ID
+            UUID userId = UUID.fromString(userIdPrincipal);
             
             // 获取文件信息
             FileResponse fileInfo = fileService.getFileInfo(userId, fileId);
@@ -117,12 +117,12 @@ public class FileController {
      */
     @DeleteMapping("/{fileId}")
     public ApiResponse<Void> deleteFile(
-            @AuthenticationPrincipal UserDetails userDetails,
+            @AuthenticationPrincipal String userIdPrincipal,
             @PathVariable UUID fileId) {
         
         try {
-            // 从UserDetails中获取用户ID
-            UUID userId = UUID.fromString(userDetails.getUsername());
+            // 从principal中获取用户ID
+            UUID userId = UUID.fromString(userIdPrincipal);
             
             fileService.deleteFile(userId, fileId);
             return ApiResponse.success("删除成功", null);
@@ -141,12 +141,12 @@ public class FileController {
      */
     @GetMapping("/{fileId}")
     public ApiResponse<FileResponse> getFileInfo(
-            @AuthenticationPrincipal UserDetails userDetails,
+            @AuthenticationPrincipal String userIdPrincipal,
             @PathVariable UUID fileId) {
         
         try {
-            // 从UserDetails中获取用户ID
-            UUID userId = UUID.fromString(userDetails.getUsername());
+            // 从principal中获取用户ID
+            UUID userId = UUID.fromString(userIdPrincipal);
             
             FileResponse fileInfo = fileService.getFileInfo(userId, fileId);
             return ApiResponse.success("获取成功", fileInfo);

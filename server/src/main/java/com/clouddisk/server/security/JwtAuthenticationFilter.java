@@ -51,12 +51,12 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
                 // 从令牌中获取用户ID
                 String userId = jwtTokenProvider.getUserIdFromToken(token);
 
-                // 加载用户详情
+                // 加载用户详情（用于权限），但将principal统一为userId字符串
                 UserDetails userDetails = customUserDetailsService.loadUserById(userId);
 
-                // 创建认证对象
+                // 创建认证对象，principal设置为userId，权限来源于用户详情
                 UsernamePasswordAuthenticationToken authentication =
-                        new UsernamePasswordAuthenticationToken(userDetails, null, userDetails.getAuthorities());
+                        new UsernamePasswordAuthenticationToken(userId, null, userDetails.getAuthorities());
 
                 // 设置认证详情
                 authentication.setDetails(new WebAuthenticationDetailsSource().buildDetails(request));
