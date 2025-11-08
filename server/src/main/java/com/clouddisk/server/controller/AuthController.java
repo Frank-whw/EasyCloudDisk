@@ -6,6 +6,7 @@ import com.clouddisk.server.dto.AuthResponse;
 import com.clouddisk.server.service.UserService;
 import jakarta.validation.Valid;
 import org.springframework.beans.factory.annotation.Autowired;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
@@ -17,6 +18,7 @@ import org.springframework.web.bind.annotation.*;
 @RestController // 标识为控制器
 @RequestMapping("/auth") // 请求映射
 @CrossOrigin(origins = "*") // 允许跨域请求
+@Slf4j
 public class AuthController {
     private final UserService userService;
     @Autowired
@@ -38,7 +40,9 @@ public class AuthController {
             ApiResponse<AuthResponse> response = new ApiResponse<AuthResponse>(true, "注册成功", authResponse, 200);
             return ResponseEntity.ok(response);
         } catch (Exception e) {
-            ApiResponse<AuthResponse> errorResponse = new ApiResponse<AuthResponse>(false, "注册失败" + e.getMessage(), null, 400);
+            // 记录详细错误到日志，避免泄露给客户端
+            log.error("用户注册失败", e);
+            ApiResponse<AuthResponse> errorResponse = new ApiResponse<AuthResponse>(false, "注册失败", null, 400);
             return ResponseEntity.badRequest().body(errorResponse);
         }
     }
@@ -57,8 +61,10 @@ public class AuthController {
             ApiResponse<AuthResponse> response = new ApiResponse<AuthResponse>(true, "登录成功", authResponse, 200);
             return ResponseEntity.ok(response);
         } catch (Exception e) {
-            ApiResponse<AuthResponse> errorResponse = new ApiResponse<AuthResponse>(false, "登录失败" + e.getMessage(), null, 400);
-            return ResponseEntity.badRequest().body(errorResponse);
+            // 记录详细错误到日志，避免泄露给客户端
+            log.error("用户登录失败", e);
+            ApiResponse<AuthResponse> errorResponse = new ApiResponse<AuthResponse>(false, "登录失败", null, 401);
+            return ResponseEntity.status(401).body(errorResponse);
         }
     }
 
