@@ -72,8 +72,9 @@ public class JwtTokenProvider {
      * @param token JWT令牌
      * @return 是否过期
      */
-    public boolean isTokenExpired(String token) {
-        return getExpirationDateFromToken(token).before(new Date());
+    private boolean isTokenExpired(String token) {
+        Date expiration = getExpirationDateFromToken(token);
+        return expiration != null && expiration.before(new Date());
     }
 
 
@@ -83,17 +84,8 @@ public class JwtTokenProvider {
      * @return 过期时间
      */
     public Date getExpirationDateFromToken(String token) {
-        return getClaimFromToken(token, Claims::getExpiration);
-    }
-
-    /**
-     * 检查JWT令牌是否过期
-     * @param token JWT令牌
-     * @return 是否过期
-     */
-    private boolean isTokenExpired(String token) {
-        Date expiration = getExpirationDateFromToken(token);
-        return expiration != null && expiration.before(new Date());
+        Claims claims = getClaimsFromToken(token);
+        return claims != null ? claims.getExpiration() : null;
     }
 
     /**
@@ -103,42 +95,15 @@ public class JwtTokenProvider {
      */
     private Claims getClaimsFromToken(String token) {
         try {
-            return Jwts.parserBuilder()
-                    .setSigningKey(jwtSecret)
+            return Jwts.parser()
+                    .verifyWith(secretKey)
                     .build()
-                    .parseClaimsJws(token)
-                    .getBody();
-        } catch (SignatureException e) {
-            System.err.println("JWT签名验证失败: " + e.getMessage());
-            return null;
-        } catch (MalformedJwtException e) {
-            System.err.println("JWT格式错误: " + e.getMessage());
-            return null;
-        } catch (ExpiredJwtException e) {
-            System.err.println("JWT已过期: " + e.getMessage());
-            return null;
-        } catch (UnsupportedJwtException e) {
-            System.err.println("不支持的JWT: " + e.getMessage());
-            return null;
-        } catch (IllegalArgumentException e) {
-            System.err.println("JWT参数非法: " + e.getMessage());
-            return null;
+                    .parseSignedClaims(token)
+                    .getPayload();
         } catch (Exception e) {
             System.err.println("JWT解析失败: " + e.getMessage());
             return null;
         }
-    }
-    /**
-     * 解析JWT令牌
-     * @param token JWT令牌
-     * @return Claims
-     */
-    private Claims getClaimsFromToken(String token) {
-        return Jwts.parser()
-                .verifyWith(secretKey)
-                .build()
-                .parseSignedClaims(token)
-                .getPayload();
     }
 
 
