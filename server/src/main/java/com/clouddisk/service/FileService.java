@@ -182,10 +182,17 @@ public class FileService {
      */
     private String calculateFileHash(MultipartFile file) throws IOException, NoSuchAlgorithmException {
         MessageDigest digest = MessageDigest.getInstance("SHA-256");
-        byte[] fileBytes = file.getBytes();
-        byte[] hashBytes = digest.digest(fileBytes);
-        
-        StringBuilder sb = new StringBuilder();
+        // 使用流式读取避免一次性加载到内存
+        try (java.io.InputStream is = file.getInputStream()) {
+            byte[] buffer = new byte[8192];
+            int bytesRead;
+            while ((bytesRead = is.read(buffer)) != -1) {
+                digest.update(buffer, 0, bytesRead);
+            }
+        }
+
+        byte[] hashBytes = digest.digest();
+        StringBuilder sb = new StringBuilder(hashBytes.length * 2);
         for (byte b : hashBytes) {
             sb.append(String.format("%02x", b));
         }
