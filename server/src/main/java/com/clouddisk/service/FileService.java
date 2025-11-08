@@ -42,12 +42,14 @@ public class FileService {
      * 上传文件
      */
     @Transactional
-    public FileUploadResponse uploadFile(UUID userId, MultipartFile file, String filePath) {
+    public FileUploadResponse uploadFile(UUID userId, MultipartFile file, String filePath, String contentHashOpt) {
         log.info("上传文件，用户ID: {}, 文件名: {}, 路径: {}", userId, file.getOriginalFilename(), filePath);
         
         try {
-            // 计算文件哈希值
-            String contentHash = calculateFileHash(file);
+            // 使用客户端提供的内容哈希（如果有），否则计算
+            String contentHash = contentHashOpt != null && !contentHashOpt.isEmpty()
+                    ? contentHashOpt
+                    : calculateFileHash(file);
             
             // 检查文件是否已存在（基于内容哈希）
             Optional<File> existingFile = fileRepository.findByUserIdAndContentHash(userId, contentHash);

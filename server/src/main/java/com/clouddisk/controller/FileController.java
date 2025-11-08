@@ -49,7 +49,8 @@ public class FileController {
     public ApiResponse<FileUploadResponse> uploadFile(
             @AuthenticationPrincipal String userIdPrincipal,
             @RequestParam("file") MultipartFile file,
-            @RequestParam(value = "filePath", required = false, defaultValue = "/") String filePath) {
+            @RequestParam(value = "filePath", required = false, defaultValue = "/") String filePath,
+            @RequestParam(value = "contentHash", required = false) String contentHash) {
         
         try {
             // 验证文件
@@ -63,8 +64,9 @@ public class FileController {
             
             // 从principal中获取用户ID
             UUID userId = UUID.fromString(userIdPrincipal);
-            
-            FileUploadResponse response = fileService.uploadFile(userId, file, filePath);
+
+            // 上传文件，传递可选的内容哈希
+            FileUploadResponse response = fileService.uploadFile(userId, file, filePath, contentHash);
             return ApiResponse.success("上传成功", response);
             
         } catch (RuntimeException e) {

@@ -12,8 +12,8 @@ import org.apache.hc.client5.http.classic.methods.HttpDelete;
 import org.apache.hc.client5.http.impl.classic.CloseableHttpClient;
 import org.apache.hc.client5.http.impl.classic.HttpClients;
 import org.apache.hc.core5.http.ContentType;
+import org.apache.hc.client5.http.entity.mime.MultipartEntityBuilder;
 import org.apache.hc.core5.http.io.entity.ByteArrayEntity;
-import org.apache.hc.core5.http.io.entity.StringEntity;
 
 import java.io.IOException;
 import java.nio.file.Files;
@@ -108,19 +108,19 @@ public class FileApiClient {
                 httpPost.setHeader("Authorization", "Bearer " + authToken);
             }
             
-            // 设置文件内容
+            // 构建multipart/form-data
+            MultipartEntityBuilder builder = MultipartEntityBuilder.create();
+            String filename = request.getLocalPath() != null ? request.getLocalPath().getFileName().toString() : "upload.bin";
             if (request.getCompressedPayload() != null) {
-                httpPost.setEntity(new ByteArrayEntity(request.getCompressedPayload(), ContentType.DEFAULT_BINARY));
+                builder.addBinaryBody("file", request.getCompressedPayload(), ContentType.APPLICATION_OCTET_STREAM, filename);
             }
-            
-            // 添加查询参数
-            StringBuilder urlBuilder = new StringBuilder(baseUrl + "/files/upload");
-            urlBuilder.append("?filePath=").append(request.getFilePath());
+            if (request.getFilePath() != null) {
+                builder.addTextBody("filePath", request.getFilePath());
+            }
             if (request.getContentHash() != null) {
-                urlBuilder.append("&contentHash=").append(request.getContentHash());
+                builder.addTextBody("contentHash", request.getContentHash());
             }
-            
-            httpPost.setUri(java.net.URI.create(urlBuilder.toString()));
+            httpPost.setEntity(builder.build());
             
             // 执行请求
             return httpClient.execute(httpPost, response -> {
