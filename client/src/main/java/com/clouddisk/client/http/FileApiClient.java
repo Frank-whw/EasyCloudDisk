@@ -157,9 +157,18 @@ public class FileApiClient {
             return httpClient.execute(httpGet, response -> {
                 int statusCode = response.getCode();
                 if (statusCode >= 200 && statusCode < 300) {
-                    // 保存文件到目标路径
-                    byte[] fileContent = response.getEntity().getContent().readAllBytes();
-                    Files.write(target, fileContent);
+                    // 保存文件到目标路径（流式拷贝，避免一次性加载到内存）
+                    try (java.io.InputStream in = response.getEntity().getContent();
+                         java.io.OutputStream out = java.nio.file.Files.newOutputStream(target);
+                         java.io.BufferedInputStream bin = new java.io.BufferedInputStream(in);
+                         java.io.BufferedOutputStream bout = new java.io.BufferedOutputStream(out)) {
+                        byte[] buffer = new byte[8192];
+                        int len;
+                        while ((len = bin.read(buffer)) != -1) {
+                            bout.write(buffer, 0, len);
+                        }
+                        bout.flush();
+                    }
                     log.info("文件下载成功: {} -> {}", fileId, target);
                     return true;
                 } else {
