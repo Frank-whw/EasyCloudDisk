@@ -1,6 +1,7 @@
 package com.clouddisk.exception;
 
 import com.clouddisk.dto.ApiResponse;
+import com.clouddisk.exception.BusinessException;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
@@ -15,6 +16,17 @@ import java.util.NoSuchElementException;
 @RestControllerAdvice
 @Slf4j
 public class GlobalExceptionHandler {
+
+    /**
+     * 处理业务异常，使用异常内置的业务状态码
+     */
+    @ExceptionHandler(BusinessException.class)
+    public ResponseEntity<ApiResponse<Void>> handleBusinessException(BusinessException e) {
+        log.error("业务异常: {}", e.getMessage(), e);
+        int code = e.getCode();
+        ApiResponse<Void> response = ApiResponse.error(e.getMessage(), code);
+        return ResponseEntity.status(code).body(response);
+    }
 
     /**
      * 处理运行时异常

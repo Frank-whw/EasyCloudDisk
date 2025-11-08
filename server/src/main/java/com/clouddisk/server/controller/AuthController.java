@@ -1,6 +1,6 @@
 package com.clouddisk.server.controller;
 
-import com.clouddisk.server.dto.ApiResponse;
+import com.clouddisk.dto.ApiResponse;
 import com.clouddisk.server.dto.AuthRequest;
 import com.clouddisk.server.dto.AuthResponse;
 import com.clouddisk.server.service.UserService;
@@ -31,19 +31,9 @@ public class AuthController {
      */
     @PostMapping("/register")
     public ResponseEntity<ApiResponse<AuthResponse>> register(@Valid @RequestBody AuthRequest authRequest){
-        try {
-            // 1. 调用UserService进行注册
-            AuthResponse authResponse = userService.register(authRequest);
-
-            // 2. 构造并返回成功响应
-            ApiResponse<AuthResponse> response = new ApiResponse<AuthResponse>(true, "注册成功", authResponse, 200);
-            return ResponseEntity.ok(response);
-        } catch (Exception e) {
-            // 记录详细错误到日志，避免泄露给客户端
-            log.error("用户注册失败", e);
-            ApiResponse<AuthResponse> errorResponse = new ApiResponse<AuthResponse>(false, "注册失败", null, 400);
-            return ResponseEntity.badRequest().body(errorResponse);
-        }
+        // 调用UserService进行注册，异常由全局异常处理器统一处理
+        AuthResponse authResponse = userService.register(authRequest);
+        return ResponseEntity.ok(ApiResponse.success("注册成功", authResponse));
     }
     /**
      * 用户登录
@@ -52,19 +42,9 @@ public class AuthController {
      */
     @PostMapping("/login")
     public ResponseEntity<ApiResponse<AuthResponse>> login(@Valid @RequestBody AuthRequest authRequest){
-        try {
-            // 1. 调用UserService进行登录
-            AuthResponse authResponse = userService.login(authRequest);
-
-            // 2. 构造并返回成功响应
-            ApiResponse<AuthResponse> response = new ApiResponse<AuthResponse>(true, "登录成功", authResponse, 200);
-            return ResponseEntity.ok(response);
-        } catch (Exception e) {
-            // 记录详细错误到日志，避免泄露给客户端
-            log.error("用户登录失败", e);
-            ApiResponse<AuthResponse> errorResponse = new ApiResponse<AuthResponse>(false, "登录失败", null, 401);
-            return ResponseEntity.status(401).body(errorResponse);
-        }
+        // 调用UserService进行登录，异常由全局异常处理器统一处理
+        AuthResponse authResponse = userService.login(authRequest);
+        return ResponseEntity.ok(ApiResponse.success("登录成功", authResponse));
     }
 
 }

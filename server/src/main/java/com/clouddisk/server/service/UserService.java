@@ -38,10 +38,10 @@ public class UserService {
      * @return 注册响应
      * @throws Exception 注册失败
      */
-    public AuthResponse register(AuthRequest authRequest) throws  Exception{
+    public AuthResponse register(AuthRequest authRequest) {
         // 1. 检查邮箱是否已存在
         if (userRepository.existsByEmail(authRequest.getEmail())) {
-            throw new Exception("邮箱已存在");
+            throw new com.clouddisk.exception.BusinessException("邮箱已存在", 409);
         }
         // 2. 创建新用户并加密密码
         String encodedPassword = passwordEncoder.encode(authRequest.getPassword());
@@ -59,7 +59,7 @@ public class UserService {
      * @return 登录响应
      * @throws Exception 登录失败
      */
-    public AuthResponse login(AuthRequest authRequest) throws Exception {
+    public AuthResponse login(AuthRequest authRequest) {
         // 1. 验证用户凭据
         authenticationManager.authenticate(
                 new UsernamePasswordAuthenticationToken(
@@ -69,7 +69,7 @@ public class UserService {
         );
         // 2. 获取用户信息
         User user = userRepository.findByEmail(authRequest.getEmail())
-                .orElseThrow(() -> new Exception("用户不存在"));
+                .orElseThrow(() -> new com.clouddisk.exception.BusinessException("用户不存在", 404));
         // 3. 生成JWT令牌
         String token = jwtTokenProvider.generateToken(user.getUser_id());
         // 4. 返回认证响应
@@ -82,7 +82,7 @@ public class UserService {
      * @throws Exception 用户不存在
      */
     @Transactional(readOnly = true) // 开启事务
-    public Optional<User> findByUserId(String userId) throws Exception {
+    public Optional<User> findByUserId(String userId) {
         return userRepository.findByUserId(userId);
     }
     /**
