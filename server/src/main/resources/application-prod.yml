@@ -4,3 +4,9 @@ spring:
     username: clouddisk
     password: ${DB_PASSWORD:123456}
     driver-class-name:
+  h2:
+    console:
+      enabled: false
+
+server:
+  address: 0.0.0.0

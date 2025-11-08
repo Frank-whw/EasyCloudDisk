@@ -9,6 +9,11 @@ spring:
     name: clouddisk-server
   profiles:
     active: dev
+    group:
+      dev:
+        - application-dev.yml
+      prod:
+        - application-prod.yml
 
   servlet:
     multipart:
