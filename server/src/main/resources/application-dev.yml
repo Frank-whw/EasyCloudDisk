@@ -25,3 +25,11 @@ spring:
 
 server:
   address: 127.0.0.1
+
+# 日志配置（开发环境）
+logging:
+  file:
+    name: logs/server.log
+  pattern:
+    console: "%d{HH:mm:ss.SSS} [%thread] %-5level %logger{36} - %msg%n"
+    file: "%d{yyyy-MM-dd HH:mm:ss.SSS} [%thread] %-5level %logger{36} - %msg%n"
