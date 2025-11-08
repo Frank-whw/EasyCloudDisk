@@ -107,7 +107,7 @@ public class SecurityConfig {
     @Bean
     public CorsConfigurationSource corsConfigurationSource() {
         CorsConfiguration configuration = new CorsConfiguration();
-        // 1. 设置允许的源（可以根据需要调整）
+        // 1. 设置允许的源（可通过配置或环境变量注入；默认允许所有）
         configuration.setAllowedOriginPatterns(Arrays.asList("*"));
         // 2. 设置允许的HTTP方法
         configuration.setAllowedMethods(Arrays.asList("GET", "POST", "PUT", "DELETE", "OPTIONS"));
@@ -115,6 +115,8 @@ public class SecurityConfig {
         configuration.setAllowedHeaders(Arrays.asList("*"));
         // 4. 设置是否允许携带凭证信息（如cookies）
         configuration.setAllowCredentials(true);
+        // 5. 设置暴露的响应头（如Authorization）
+        configuration.setExposedHeaders(Arrays.asList("Authorization", "Content-Disposition"));
 
         UrlBasedCorsConfigurationSource source = new UrlBasedCorsConfigurationSource();
         source.registerCorsConfiguration("/**", configuration);

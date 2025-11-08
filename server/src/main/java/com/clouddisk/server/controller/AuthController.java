@@ -17,7 +17,6 @@ import org.springframework.web.bind.annotation.*;
  */
 @RestController // 标识为控制器
 @RequestMapping("/auth") // 请求映射
-@CrossOrigin(origins = "*") // 允许跨域请求
 @Slf4j
 public class AuthController {
     private final UserService userService;
