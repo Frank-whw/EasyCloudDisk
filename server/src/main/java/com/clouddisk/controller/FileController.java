@@ -6,7 +6,8 @@ import com.clouddisk.dto.FileUploadResponse;
 import com.clouddisk.service.FileService;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
-import org.springframework.core.io.ByteArrayResource;
+import org.springframework.core.io.InputStreamResource;
+import java.io.BufferedInputStream;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
@@ -82,7 +83,7 @@ public class FileController {
      * 下载文件
      */
     @GetMapping("/{fileId}/download")
-    public ResponseEntity<ByteArrayResource> downloadFile(
+    public ResponseEntity<InputStreamResource> downloadFile(
             @AuthenticationPrincipal String userIdPrincipal,
             @PathVariable UUID fileId) {
         
@@ -93,16 +94,18 @@ public class FileController {
             // 获取文件信息
             FileResponse fileInfo = fileService.getFileInfo(userId, fileId);
             
-            // 下载文件内容
-            byte[] fileContent = fileService.downloadFile(userId, fileId);
-            
-            ByteArrayResource resource = new ByteArrayResource(fileContent);
+            // 以流式方式打开文件内容
+            java.io.InputStream stream = new BufferedInputStream(
+                    fileService.openFileStream(userId, fileId),
+                    8192
+            );
+            InputStreamResource resource = new InputStreamResource(stream);
             
             return ResponseEntity.ok()
                     .header(HttpHeaders.CONTENT_DISPOSITION, 
                             "attachment; filename=\"" + fileInfo.getName() + "\"")
                     .contentType(MediaType.APPLICATION_OCTET_STREAM)
-                    .contentLength(fileContent.length)
+                    .contentLength(fileInfo.getFileSize())
                     .body(resource);
                     
         } catch (RuntimeException e) {

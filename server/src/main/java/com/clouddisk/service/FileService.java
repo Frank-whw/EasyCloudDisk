@@ -11,6 +11,7 @@ import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.multipart.MultipartFile;
 
 import java.io.IOException;
+import java.io.InputStream;
 import java.security.MessageDigest;
 import java.security.NoSuchAlgorithmException;
 import java.time.LocalDateTime;
@@ -131,6 +132,23 @@ public class FileService {
         }
         
         return s3Service.downloadFile(file.getS3Key());
+    }
+
+    /**
+     * 以流式方式打开文件内容
+     */
+    public InputStream openFileStream(UUID userId, UUID fileId) {
+        log.info("以流式方式打开文件，用户ID: {}, 文件ID: {}", userId, fileId);
+
+        File file = fileRepository.findById(fileId)
+                .orElseThrow(() -> new RuntimeException("文件不存在"));
+
+        // 验证文件所有权
+        if (!file.getUserId().equals(userId)) {
+            throw new RuntimeException("无权访问此文件");
+        }
+
+        return s3Service.downloadFileStream(file.getS3Key());
     }
     
     /**

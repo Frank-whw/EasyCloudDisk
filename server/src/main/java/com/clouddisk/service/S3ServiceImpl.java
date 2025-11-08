@@ -5,11 +5,13 @@ import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 import org.springframework.web.multipart.MultipartFile;
+import software.amazon.awssdk.core.ResponseInputStream;
 import software.amazon.awssdk.core.sync.RequestBody;
 import software.amazon.awssdk.services.s3.S3Client;
 import software.amazon.awssdk.services.s3.model.*;
 
 import java.io.IOException;
+import java.io.InputStream;
 
 @Service
 @RequiredArgsConstructor
@@ -68,6 +70,24 @@ public class S3ServiceImpl implements S3Service {
             
         } catch (S3Exception e) {
             log.error("从S3下载文件失败，key: {}", s3Key, e);
+            throw new RuntimeException("文件下载失败: " + e.getMessage());
+        }
+    }
+
+    @Override
+    public InputStream downloadFileStream(String s3Key) {
+        try {
+            log.info("从S3以流式方式下载文件，bucket: {}, key: {}", bucketName, s3Key);
+
+            GetObjectRequest getObjectRequest = GetObjectRequest.builder()
+                    .bucket(bucketName)
+                    .key(s3Key)
+                    .build();
+
+            ResponseInputStream<GetObjectResponse> stream = s3Client.getObject(getObjectRequest);
+            return stream;
+        } catch (S3Exception e) {
+            log.error("从S3流式下载文件失败，key: {}", s3Key, e);
             throw new RuntimeException("文件下载失败: " + e.getMessage());
         }
     }
