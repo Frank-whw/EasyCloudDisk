@@ -1,7 +1,10 @@
 package com.clouddisk.client.http;
 
+import com.clouddisk.client.model.ApiResponse;
 import com.clouddisk.client.model.FileMetadata;
 import com.clouddisk.client.model.FileUploadRequest;
+import com.fasterxml.jackson.core.type.TypeReference;
+import com.fasterxml.jackson.databind.ObjectMapper;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.hc.client5.http.classic.methods.HttpGet;
 import org.apache.hc.client5.http.classic.methods.HttpPost;
@@ -13,7 +16,9 @@ import org.apache.hc.core5.http.io.entity.ByteArrayEntity;
 import org.apache.hc.core5.http.io.entity.StringEntity;
 
 import java.io.IOException;
+import java.nio.file.Files;
 import java.nio.file.Path;
+import java.util.ArrayList;
 import java.util.List;
 
 /**
@@ -52,8 +57,41 @@ public class FileApiClient {
      * @return 文件元数据列表
      */
     public List<FileMetadata> listFiles() {
-        // TODO: 实现获取文件列表逻辑
-        return null;
+        try {
+            HttpGet httpGet = new HttpGet(baseUrl + "/files");
+            
+            // 设置认证头
+            if (authToken != null && !authToken.isEmpty()) {
+                httpGet.setHeader("Authorization", "Bearer " + authToken);
+            }
+            
+            // 执行请求
+            return httpClient.execute(httpGet, response -> {
+                int statusCode = response.getCode();
+                if (statusCode >= 200 && statusCode < 300) {
+                    // 解析响应
+                    ObjectMapper mapper = new ObjectMapper();
+                    ApiResponse<List<FileMetadata>> apiResponse = mapper.readValue(
+                        response.getEntity().getContent(),
+                        new TypeReference<ApiResponse<List<FileMetadata>>>() {}
+                    );
+                    
+                    if (apiResponse.isSuccess()) {
+                        log.info("获取文件列表成功，共 {} 个文件", apiResponse.getData().size());
+                        return apiResponse.getData();
+                    } else {
+                        log.error("获取文件列表失败: {}", apiResponse.getMessage());
+                        return new ArrayList<>();
+                    }
+                } else {
+                    log.error("获取文件列表失败，状态码: {}", statusCode);
+                    return new ArrayList<>();
+                }
+            });
+        } catch (Exception e) {
+            log.error("获取文件列表过程中发生错误", e);
+            return new ArrayList<>();
+        }
     }
     
     /**
@@ -65,8 +103,7 @@ public class FileApiClient {
             // 创建上传请求
             HttpPost httpPost = new HttpPost(baseUrl + "/files/upload");
             
-            // 设置请求头
-            httpPost.setHeader("Content-Type", "application/octet-stream");
+            // 设置认证头
             if (authToken != null && !authToken.isEmpty()) {
                 httpPost.setHeader("Authorization", "Bearer " + authToken);
             }
@@ -107,15 +144,62 @@ public class FileApiClient {
      * @param fileId 文件ID
      * @param target 目标路径
      */
-    public void downloadFile(String fileId, Path target) {
-        // TODO: 实现二进制下载逻辑
+    public boolean downloadFile(String fileId, Path target) {
+        try {
+            HttpGet httpGet = new HttpGet(baseUrl + "/files/" + fileId + "/download");
+            
+            // 设置认证头
+            if (authToken != null && !authToken.isEmpty()) {
+                httpGet.setHeader("Authorization", "Bearer " + authToken);
+            }
+            
+            // 执行请求
+            return httpClient.execute(httpGet, response -> {
+                int statusCode = response.getCode();
+                if (statusCode >= 200 && statusCode < 300) {
+                    // 保存文件到目标路径
+                    byte[] fileContent = response.getEntity().getContent().readAllBytes();
+                    Files.write(target, fileContent);
+                    log.info("文件下载成功: {} -> {}", fileId, target);
+                    return true;
+                } else {
+                    log.error("文件下载失败，状态码: {}", statusCode);
+                    return false;
+                }
+            });
+        } catch (Exception e) {
+            log.error("文件下载过程中发生错误: {}", fileId, e);
+            return false;
+        }
     }
     
     /**
      * 删除文件
      * @param fileId 文件ID
      */
-    public void deleteFile(String fileId) {
-        // TODO: 实现删除文件逻辑
+    public boolean deleteFile(String fileId) {
+        try {
+            HttpDelete httpDelete = new HttpDelete(baseUrl + "/files/" + fileId);
+            
+            // 设置认证头
+            if (authToken != null && !authToken.isEmpty()) {
+                httpDelete.setHeader("Authorization", "Bearer " + authToken);
+            }
+            
+            // 执行请求
+            return httpClient.execute(httpDelete, response -> {
+                int statusCode = response.getCode();
+                if (statusCode >= 200 && statusCode < 300) {
+                    log.info("文件删除成功: {}", fileId);
+                    return true;
+                } else {
+                    log.error("文件删除失败，状态码: {}", statusCode);
+                    return false;
+                }
+            });
+        } catch (Exception e) {
+            log.error("文件删除过程中发生错误: {}", fileId, e);
+            return false;
+        }
     }
 }

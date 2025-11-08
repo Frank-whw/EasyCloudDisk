@@ -9,7 +9,7 @@ import java.util.logging.Logger;
 /**
  * 服务器主应用 入口
  */
-@SpringBootApplication
+@SpringBootApplication(scanBasePackages = {"com.clouddisk.server", "com.clouddisk"})
 public class ServerApplication {
     private static final Logger logger = Logger.getLogger(ServerApplication.class.getName()); // 获取日志记录器
     public static void main(String[] args) {
