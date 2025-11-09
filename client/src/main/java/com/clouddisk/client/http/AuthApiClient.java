@@ -49,10 +49,10 @@ public class AuthApiClient {
             AuthResponse response = sendAuthRequest("/auth/login", request);
             return response.getToken();
         } catch (IOException | ParseException e) {
-            System.err.println("登录请求失败: " + e.getMessage());
+            System.out.println("登录请求失败: " + e.getMessage());
             return null;
         } catch (RuntimeException e) {
-            System.err.println("登录失败: " + e.getMessage());
+            System.out.println("登录失败: " + e.getMessage());
             return null;
         }
     }
@@ -69,10 +69,10 @@ public class AuthApiClient {
             AuthResponse response = sendAuthRequest("/auth/register", request);
             return response != null && response.getToken() != null;
         } catch (IOException | ParseException e) {
-            System.err.println("注册请求失败: " + e.getMessage());
+            System.out.println("注册请求失败: " + e.getMessage());
             return false;
         } catch (RuntimeException e) {
-            System.err.println("注册失败: " + e.getMessage());
+            System.out.println("注册失败: " + e.getMessage());
             return false;
         }
     }

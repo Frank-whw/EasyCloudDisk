@@ -3,8 +3,8 @@ client:
   sync-dir: ${CLIENT_SYNC_DIR:./local}
   compress-strategy: ${CLIENT_COMPRESS_STRATEGY:zip}
   enable-auto-sync: ${CLIENT_ENABLE_AUTO_SYNC:true}
-  email: ${CLIENT_EMAIL:2120320012@qq.com} # 改成自己的
-  password: ${CLIENT_PASSWORD:123456} # 改成自己的
+  email: ${CLIENT_EMAIL:} # 改成自己的
+  password: ${CLIENT_PASSWORD:} # 改成自己的
 
 spring:
   main:

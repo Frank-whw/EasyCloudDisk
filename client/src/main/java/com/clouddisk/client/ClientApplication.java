@@ -124,48 +124,102 @@ public class ClientApplication implements CommandLineRunner {
      */
     private boolean interactiveLogin() {
         Scanner scanner = new Scanner(System.in);
+        int maxAttempts = 3;
         
-        System.out.println("=== 云盘客户端登录 ===");
-        System.out.print("请选择操作 (1-登录, 2-注册): ");
-        
-        try {
-            int choice = Integer.parseInt(scanner.nextLine());
+        for (int attempt = 0; attempt < maxAttempts; attempt++) {
+            System.out.println("\n=== 云盘客户端登录 ===");
+            System.out.print("请选择操作 (1-登录, 2-注册): ");
             
-            System.out.print("邮箱: ");
-            String email = scanner.nextLine();
-            System.out.print("密码: ");
-            String password = scanner.nextLine();
-            
-            String token;
-            if (choice == 2) {
-                // 注册
-                if (authApiClient.register(email, password)) {
-                    token = authApiClient.login(email, password);
+            try {
+                int choice = Integer.parseInt(scanner.nextLine());
+                
+                System.out.print("邮箱: ");
+                String email = scanner.nextLine();
+                
+                // 密码输入循环（最多3次）
+                String password = null;
+                for (int i = 0; i < 3; i++) {
+                    System.out.print("密码: ");
+                    password = scanner.nextLine();
+                    
+                    // 本地校验密码长度
+                    if (password.length() < 6) {
+                        System.out.println("密码长度不能少于6位，请重新输入");
+                        if (i < 2) {
+                            System.out.println("还有 " + (2 - i) + " 次输入机会");
+                        }
+                    } else {
+                        break;
+                    }
+                }
+                
+                // 如果3次密码输入都不合规，回到选择操作
+                if (password == null || password.length() < 6) {
+                    System.out.println("密码输入失败次数过多");
+                    if (attempt < maxAttempts - 1) {
+                        System.out.println("还有 " + (maxAttempts - attempt - 1) + " 次尝试机会");
+                        continue;
+                    } else {
+                        return false;
+                    }
+                }
+                
+                String token;
+                if (choice == 2) {
+                    // 注册
+                    if (authApiClient.register(email, password)) {
+                        token = authApiClient.login(email, password);
+                    } else {
+                        // register() 方法已经打印了详细错误信息
+                        if (attempt < maxAttempts - 1) {
+                            System.out.println("还有 " + (maxAttempts - attempt - 1) + " 次尝试机会");
+                            continue;
+                        } else {
+                            return false;
+                        }
+                    }
                 } else {
-                    log.error("注册失败");
+                    // 登录
+                    token = authApiClient.login(email, password);
+                }
+                
+                if (token != null) {
+                    context.setToken(token);
+                    context.setUserId(email);
+                    // 设置文件API客户端的认证令牌
+                    context.getFileApiClient().setAuthToken(token);
+                    log.info("用户 {} 登录成功", email);
+                    return true;
+                } else {
+                    System.out.println("认证失败");
+                    if (attempt < maxAttempts - 1) {
+                        System.out.println("还有 " + (maxAttempts - attempt - 1) + " 次尝试机会");
+                        continue;
+                    } else {
+                        return false;
+                    }
+                }
+                
+            } catch (NumberFormatException e) {
+                System.out.println("输入无效，请输入 1 或 2");
+                if (attempt < maxAttempts - 1) {
+                    System.out.println("还有 " + (maxAttempts - attempt - 1) + " 次尝试机会");
+                    continue;
+                } else {
                     return false;
                 }
-            } else {
-                // 登录
-                token = authApiClient.login(email, password);
+            } catch (Exception e) {
+                log.error("交互式登录过程出错", e);
+                if (attempt < maxAttempts - 1) {
+                    System.out.println("还有 " + (maxAttempts - attempt - 1) + " 次尝试机会");
+                    continue;
+                } else {
+                    return false;
+                }
             }
-            
-            if (token != null) {
-                context.setToken(token);
-                context.setUserId(email);
-                // 设置文件API客户端的认证令牌
-                context.getFileApiClient().setAuthToken(token);
-                log.info("用户 {} 登录成功", email);
-                return true;
-            } else {
-                log.error("登录失败");
-                return false;
-            }
-            
-        } catch (Exception e) {
-            log.error("交互式登录失败", e);
-            return false;
         }
+        
+        return false;
     }
 
     /**
