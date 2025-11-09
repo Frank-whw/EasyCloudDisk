@@ -2,90 +2,85 @@ package com.clouddisk.client.sync;
 
 import lombok.extern.slf4j.Slf4j;
 
-import java.io.FileInputStream;
 import java.io.IOException;
+import java.io.InputStream;
+import java.nio.file.Files;
 import java.nio.file.Path;
 import java.security.MessageDigest;
 import java.security.NoSuchAlgorithmException;
-import java.util.HashMap;
+import java.util.LinkedHashMap;
 import java.util.Map;
 
 /**
- * 哈希计算器
- * 用于计算文件的哈希值，支持整体文件哈希和分块哈希计算
+ * 哈希计算器，提供整文件与分块哈希功能。
  */
 @Slf4j
 public class HashCalculator {
-    
-    private static final int CHUNK_SIZE = 1024 * 1024; // 1MB
-    
+
+    private static final int DEFAULT_BUFFER_SIZE = 8 * 1024;
+    private int chunkSizeBytes = 1_048_576;
+
+    public HashCalculator() {
+    }
+
+    public HashCalculator(int chunkSizeBytes) {
+        setChunkSizeBytes(chunkSizeBytes);
+    }
+
+    public void setChunkSizeBytes(int chunkSizeBytes) {
+        if (chunkSizeBytes <= 0) {
+            throw new IllegalArgumentException("chunkSizeBytes must be > 0");
+        }
+        this.chunkSizeBytes = chunkSizeBytes;
+    }
+
+    public int getChunkSizeBytes() {
+        return chunkSizeBytes;
+    }
+
     /**
-     * 计算文件哈希值
-     * @param path 文件路径
-     * @return 文件哈希值（SHA-256）
+     * 计算文件整体哈希。
      */
     public String computeFileHash(Path path) {
         try {
             MessageDigest digest = MessageDigest.getInstance("SHA-256");
-            
-            try (FileInputStream fis = new FileInputStream(path.toFile())) {
-                byte[] buffer = new byte[8192];
+            try (InputStream inputStream = Files.newInputStream(path)) {
+                byte[] buffer = new byte[DEFAULT_BUFFER_SIZE];
                 int bytesRead;
-                
-                while ((bytesRead = fis.read(buffer)) != -1) {
+                while ((bytesRead = inputStream.read(buffer)) != -1) {
                     digest.update(buffer, 0, bytesRead);
                 }
             }
-            
-            byte[] hashBytes = digest.digest();
-            return bytesToHex(hashBytes);
+            return bytesToHex(digest.digest());
         } catch (IOException | NoSuchAlgorithmException e) {
             log.error("计算文件哈希值失败: {}", path, e);
             return null;
         }
     }
-    
+
     /**
-     * 计算文件块哈希值
-     * @param path 文件路径
-     * @return 块哈希值映射，键为块索引，值为块的哈希值
+     * 计算文件分块哈希。
      */
     public Map<Integer, String> chunkHashes(Path path) {
-        Map<Integer, String> chunkHashes = new HashMap<>();
-        
-        try {
-            MessageDigest digest = MessageDigest.getInstance("SHA-256");
-            
-            try (FileInputStream fis = new FileInputStream(path.toFile())) {
-                byte[] buffer = new byte[CHUNK_SIZE];
-                int bytesRead;
-                int chunkIndex = 0;
-                
-                while ((bytesRead = fis.read(buffer)) != -1) {
-                    digest.update(buffer, 0, bytesRead);
-                    byte[] hashBytes = digest.digest();
-                    chunkHashes.put(chunkIndex, bytesToHex(hashBytes));
-                    
-                    // 重置摘要器以计算下一个块
-                    digest.reset();
-                    chunkIndex++;
-                }
+        Map<Integer, String> result = new LinkedHashMap<>();
+        try (InputStream inputStream = Files.newInputStream(path)) {
+            byte[] buffer = new byte[chunkSizeBytes];
+            int bytesRead;
+            int index = 0;
+            while ((bytesRead = inputStream.read(buffer)) != -1) {
+                MessageDigest digest = MessageDigest.getInstance("SHA-256");
+                digest.update(buffer, 0, bytesRead);
+                result.put(index++, bytesToHex(digest.digest()));
             }
         } catch (IOException | NoSuchAlgorithmException e) {
             log.error("计算文件块哈希值失败: {}", path, e);
-            return new HashMap<>();
+            return new LinkedHashMap<>();
         }
-        
-        return chunkHashes;
+        return result;
     }
-    
-    /**
-     * 将字节数组转换为十六进制字符串
-     * @param bytes 字节数组
-     * @return 十六进制字符串
-     */
+
     private String bytesToHex(byte[] bytes) {
-        StringBuilder result = new StringBuilder();
+        StringBuilder result = new StringBuilder(bytes.length * 2);
         for (byte b : bytes) {
             result.append(String.format("%02x", b));
         }
