@@ -3,7 +3,7 @@ spring:
     url: jdbc:postgresql://localhost:5432/clouddisk
     username: clouddisk
     password: ${DB_PASSWORD:123456}
-    driver-class-name:
+    driver-class-name: org.postgresql.Driver
   h2:
     console:
       enabled: false
