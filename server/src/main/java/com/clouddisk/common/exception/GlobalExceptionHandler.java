@@ -1,7 +1,7 @@
-package com.clouddisk.exception;
+package com.clouddisk.common.exception;
 
-import com.clouddisk.dto.ApiResponse;
-import com.clouddisk.exception.BusinessException;
+import com.clouddisk.common.dto.ApiResponse;
+import com.clouddisk.common.exception.BusinessException;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;

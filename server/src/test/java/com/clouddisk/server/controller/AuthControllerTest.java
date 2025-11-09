@@ -1,8 +1,8 @@
-package com.clouddisk.server.controller;
+package com.clouddisk.user.controller;
 
-import com.clouddisk.server.dto.AuthRequest;
-import com.clouddisk.server.dto.AuthResponse;
-import com.clouddisk.server.service.UserService;
+import com.clouddisk.user.dto.AuthRequest;
+import com.clouddisk.user.dto.AuthResponse;
+import com.clouddisk.user.service.UserService;
 import org.junit.jupiter.api.Test;
 import org.mockito.Mockito;
 import org.springframework.beans.factory.annotation.Autowired;

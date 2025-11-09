@@ -1,9 +1,9 @@
-package com.clouddisk.controller;
+package com.clouddisk.file.controller;
 
-import com.clouddisk.dto.ApiResponse;
-import com.clouddisk.dto.FileResponse;
-import com.clouddisk.dto.FileUploadResponse;
-import com.clouddisk.service.FileService;
+import com.clouddisk.common.dto.ApiResponse;
+import com.clouddisk.common.dto.FileResponse;
+import com.clouddisk.common.dto.FileUploadResponse;
+import com.clouddisk.file.service.FileService;
 import org.junit.jupiter.api.Test;
 import org.mockito.Mockito;
 import org.springframework.beans.factory.annotation.Autowired;

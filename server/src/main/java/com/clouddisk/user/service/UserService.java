@@ -1,10 +1,12 @@
-package com.clouddisk.server.service;
+package com.clouddisk.user.service;
 
-import com.clouddisk.server.dto.AuthResponse;
-import com.clouddisk.server.dto.AuthRequest;
-import com.clouddisk.server.entity.User;
-import com.clouddisk.server.repository.UserRepository;
-import com.clouddisk.server.security.JwtTokenProvider;
+import com.clouddisk.user.dto.AuthResponse;
+import com.clouddisk.user.dto.AuthRequest;
+import com.clouddisk.user.entity.User;
+import com.clouddisk.user.repository.UserRepository;
+import com.clouddisk.common.security.JwtTokenProvider;
+
+import java.util.UUID;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.security.authentication.AuthenticationManager;
@@ -41,7 +43,7 @@ public class UserService {
     public AuthResponse register(AuthRequest authRequest) {
         // 1. 检查邮箱是否已存在
         if (userRepository.existsByEmail(authRequest.getEmail())) {
-            throw new com.clouddisk.exception.BusinessException("邮箱已存在", 409);
+            throw new com.clouddisk.common.exception.BusinessException("邮箱已存在", 409);
         }
         // 2. 创建新用户并加密密码
         String encodedPassword = passwordEncoder.encode(authRequest.getPassword());
@@ -51,7 +53,7 @@ public class UserService {
         // 4. 生成JWT令牌
         String token = jwtTokenProvider.generateToken(savedUser.getUser_id());
         // 5. 返回认证响应
-        return new AuthResponse(token, savedUser.getUser_id(), savedUser.getEmail());
+        return new AuthResponse(token, UUID.fromString(savedUser.getUser_id()), savedUser.getEmail());
     }
     /**
      * 登录
@@ -69,11 +71,11 @@ public class UserService {
         );
         // 2. 获取用户信息
         User user = userRepository.findByEmail(authRequest.getEmail())
-                .orElseThrow(() -> new com.clouddisk.exception.BusinessException("用户不存在", 404));
+                .orElseThrow(() -> new com.clouddisk.common.exception.BusinessException("用户不存在", 404));
         // 3. 生成JWT令牌
         String token = jwtTokenProvider.generateToken(user.getUser_id());
         // 4. 返回认证响应
-        return new AuthResponse(token, user.getUser_id(), user.getEmail());
+        return new AuthResponse(token, UUID.fromString(user.getUser_id()), user.getEmail());
     }
     /**
      * 获取当前用户信息

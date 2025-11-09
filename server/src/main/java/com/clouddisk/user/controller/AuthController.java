@@ -1,9 +1,9 @@
-package com.clouddisk.server.controller;
+package com.clouddisk.user.controller;
 
-import com.clouddisk.dto.ApiResponse;
-import com.clouddisk.server.dto.AuthRequest;
-import com.clouddisk.server.dto.AuthResponse;
-import com.clouddisk.server.service.UserService;
+import com.clouddisk.common.dto.ApiResponse;
+import com.clouddisk.user.dto.AuthRequest;
+import com.clouddisk.user.dto.AuthResponse;
+import com.clouddisk.user.service.UserService;
 import jakarta.validation.Valid;
 import org.springframework.beans.factory.annotation.Autowired;
 import lombok.extern.slf4j.Slf4j;

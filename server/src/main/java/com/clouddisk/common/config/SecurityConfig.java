@@ -1,7 +1,7 @@
-package com.clouddisk.server.config;
+package com.clouddisk.common.config;
 
-import com.clouddisk.server.security.JwtAuthenticationFilter;
-import com.clouddisk.server.service.CustomUserDetailsService;
+import com.clouddisk.common.security.JwtAuthenticationFilter;
+import com.clouddisk.user.service.CustomUserDetailsService;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;

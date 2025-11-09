@@ -1,10 +1,10 @@
-package com.clouddisk.service;
+package com.clouddisk.file.service;
 
-import com.clouddisk.dto.FileResponse;
-import com.clouddisk.dto.FileUploadResponse;
-import com.clouddisk.entity.File;
-import com.clouddisk.exception.BusinessException;
-import com.clouddisk.repository.FileRepository;
+import com.clouddisk.common.dto.FileResponse;
+import com.clouddisk.common.dto.FileUploadResponse;
+import com.clouddisk.file.entity.File;
+import com.clouddisk.common.exception.BusinessException;
+import com.clouddisk.file.repository.FileRepository;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;

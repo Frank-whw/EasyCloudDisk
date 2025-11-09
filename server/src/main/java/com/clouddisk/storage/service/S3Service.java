@@ -1,4 +1,4 @@
-package com.clouddisk.service;
+package com.clouddisk.storage.service;
 
 import org.springframework.web.multipart.MultipartFile;
 import java.io.InputStream;

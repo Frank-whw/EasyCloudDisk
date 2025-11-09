@@ -1,7 +1,7 @@
-package com.clouddisk.server.service;
+package com.clouddisk.user.service;
 
-import com.clouddisk.server.entity.User;
-import com.clouddisk.server.repository.UserRepository;
+import com.clouddisk.user.entity.User;
+import com.clouddisk.user.repository.UserRepository;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;

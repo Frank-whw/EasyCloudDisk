@@ -1,9 +1,9 @@
-package com.clouddisk.controller;
+package com.clouddisk.file.controller;
 
-import com.clouddisk.dto.ApiResponse;
-import com.clouddisk.dto.FileResponse;
-import com.clouddisk.dto.FileUploadResponse;
-import com.clouddisk.service.FileService;
+import com.clouddisk.common.dto.ApiResponse;
+import com.clouddisk.common.dto.FileResponse;
+import com.clouddisk.common.dto.FileUploadResponse;
+import com.clouddisk.file.service.FileService;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.core.io.InputStreamResource;
@@ -49,11 +49,11 @@ public class FileController {
             @RequestParam(value = "contentHash", required = false) String contentHash) {
         // 验证文件
         if (file.isEmpty()) {
-            throw new com.clouddisk.exception.BusinessException("文件不能为空", 400);
+            throw new com.clouddisk.common.exception.BusinessException("文件不能为空", 400);
         }
 
         if (file.getSize() > 100 * 1024 * 1024) { // 100MB限制
-            throw new com.clouddisk.exception.BusinessException("文件大小不能超过100MB", 413);
+            throw new com.clouddisk.common.exception.BusinessException("文件大小不能超过100MB", 413);
         }
 
         // 从principal中获取用户ID

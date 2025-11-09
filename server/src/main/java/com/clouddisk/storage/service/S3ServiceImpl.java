@@ -1,4 +1,4 @@
-package com.clouddisk.service;
+package com.clouddisk.storage.service;
 
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;

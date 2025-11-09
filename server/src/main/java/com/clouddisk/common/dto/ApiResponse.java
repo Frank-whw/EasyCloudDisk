@@ -1,4 +1,4 @@
-package com.clouddisk.dto;
+package com.clouddisk.common.dto;
 
 import lombok.Data;
 import lombok.NoArgsConstructor;

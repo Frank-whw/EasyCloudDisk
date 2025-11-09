@@ -1,4 +1,4 @@
-package com.clouddisk.exception;
+package com.clouddisk.common.exception;
 
 public class BusinessException extends RuntimeException {
     

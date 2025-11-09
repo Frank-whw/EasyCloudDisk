@@ -1,11 +1,11 @@
-package com.clouddisk.server.service;
+package com.clouddisk.user.service;
 
-import com.clouddisk.exception.BusinessException;
-import com.clouddisk.server.dto.AuthRequest;
-import com.clouddisk.server.dto.AuthResponse;
-import com.clouddisk.server.entity.User;
-import com.clouddisk.server.repository.UserRepository;
-import com.clouddisk.server.security.JwtTokenProvider;
+import com.clouddisk.common.exception.BusinessException;
+import com.clouddisk.user.dto.AuthRequest;
+import com.clouddisk.user.dto.AuthResponse;
+import com.clouddisk.user.entity.User;
+import com.clouddisk.user.repository.UserRepository;
+import com.clouddisk.common.security.JwtTokenProvider;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;

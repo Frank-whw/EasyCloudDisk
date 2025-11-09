@@ -1,4 +1,4 @@
-package com.clouddisk.server.security;
+package com.clouddisk.common.security;
 
 
 import io.jsonwebtoken.Claims;

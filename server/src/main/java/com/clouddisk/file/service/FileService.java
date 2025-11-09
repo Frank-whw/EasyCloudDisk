@@ -2,8 +2,10 @@ package com.clouddisk.file.service;
 
 import com.clouddisk.common.dto.FileResponse;
 import com.clouddisk.common.dto.FileUploadResponse;
+import com.clouddisk.common.exception.BusinessException;
 import com.clouddisk.file.entity.File;
 import com.clouddisk.file.repository.FileRepository;
+import com.clouddisk.storage.service.S3Service;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
@@ -89,7 +91,7 @@ public class FileService {
             
         } catch (IOException | NoSuchAlgorithmException e) {
             log.error("文件上传失败", e);
-            throw new RuntimeException("文件上传失败: " + e.getMessage());
+            throw new BusinessException("文件上传失败: " + e.getMessage());
         }
     }
     

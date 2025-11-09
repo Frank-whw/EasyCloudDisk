@@ -1,6 +1,6 @@
-package com.clouddisk.server.repository;
+package com.clouddisk.user.repository;
 
-import com.clouddisk.server.entity.User;
+import com.clouddisk.user.entity.User;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.stereotype.Repository;

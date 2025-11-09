@@ -1,6 +1,6 @@
-package com.clouddisk.server.security;
+package com.clouddisk.common.security;
 
-import com.clouddisk.server.service.CustomUserDetailsService;
+import com.clouddisk.user.service.CustomUserDetailsService;
 import jakarta.servlet.FilterChain;
 import jakarta.servlet.ServletException;
 import jakarta.servlet.http.HttpServletRequest;

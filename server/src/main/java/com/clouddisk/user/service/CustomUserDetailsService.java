@@ -1,6 +1,6 @@
-package com.clouddisk.server.service;
+package com.clouddisk.user.service;
 
-import com.clouddisk.server.repository.UserRepository;
+import com.clouddisk.user.repository.UserRepository;
 import jakarta.persistence.Id;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.beans.factory.annotation.Autowired;

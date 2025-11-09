@@ -1,4 +1,4 @@
-package com.clouddisk.config;
+package com.clouddisk.storage.config;
 
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.annotation.Bean;
