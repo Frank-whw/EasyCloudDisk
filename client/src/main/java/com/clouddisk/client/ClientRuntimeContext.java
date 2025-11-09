@@ -27,6 +27,14 @@ public class ClientRuntimeContext {
     private String token;
     private String userId;
     
+    public void setToken(String token) {
+        this.token = token;
+        // 同时更新文件API客户端的认证令牌
+        if (this.fileApiClient != null) {
+            this.fileApiClient.setAuthToken(token);
+        }
+    }
+    
     @Autowired
     private ClientProperties config; // 配置
     
@@ -52,6 +60,11 @@ public class ClientRuntimeContext {
 
         // 创建文件API客户端（使用配置的服务器地址）
         if(this.fileApiClient == null) this.fileApiClient = new FileApiClient(config.getServerUrl(), this.httpClient);
+        
+        // 设置认证令牌
+        if (this.token != null) {
+            this.fileApiClient.setAuthToken(this.token);
+        }
 
         // 设置文件API客户端
         this.syncManager.setFileApiClient(this.fileApiClient);
@@ -71,6 +84,7 @@ public class ClientRuntimeContext {
             
             // 设置监听目录
             directoryWatcher.setWatchDir(syncDir);
+            log.info("已设置监听目录: {}", syncDir);
         } catch (IOException e) {
             log.error("配置文件监听器失败", e);
             throw new RuntimeException("配置文件监听器失败", e);

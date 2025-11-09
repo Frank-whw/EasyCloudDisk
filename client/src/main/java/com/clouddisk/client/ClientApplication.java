@@ -153,6 +153,8 @@ public class ClientApplication implements CommandLineRunner {
             if (token != null) {
                 context.setToken(token);
                 context.setUserId(email);
+                // 设置文件API客户端的认证令牌
+                context.getFileApiClient().setAuthToken(token);
                 log.info("用户 {} 登录成功", email);
                 return true;
             } else {
