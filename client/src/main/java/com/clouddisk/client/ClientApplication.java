@@ -1,10 +1,12 @@
 package com.clouddisk.client;
 
+import com.clouddisk.client.config.ClientProperties;
 import com.clouddisk.client.http.AuthApiClient;
 import com.clouddisk.client.http.FileApiClient;
 
 import com.clouddisk.client.sync.FileEvent;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.CommandLineRunner;
 import org.springframework.boot.SpringApplication;
 import org.springframework.boot.autoconfigure.SpringBootApplication;
@@ -21,11 +23,16 @@ import java.util.concurrent.TimeUnit;
 @SpringBootApplication
 public class ClientApplication implements CommandLineRunner {
 
-    private static ClientRuntimeContext context;
-    private static AuthApiClient authApiClient;
-    private static FileApiClient fileApiClient;
-    private static ScheduledExecutorService syncExecutor;
-    private static volatile boolean isRunning = true;
+    private ClientRuntimeContext context;
+    private AuthApiClient authApiClient;
+    private FileApiClient fileApiClient;
+    private ScheduledExecutorService syncExecutor;
+    private volatile boolean isRunning = true;
+
+    @Autowired
+    public ClientApplication(ClientRuntimeContext context) {
+        this.context = context;
+    }
 
     public static void main(String[] args) {
         SpringApplication.run(ClientApplication.class, args);
@@ -37,7 +44,7 @@ public class ClientApplication implements CommandLineRunner {
         
         try {
             // 1. 初始化上下文
-            context = initializeContext();
+            initializeContext();
             
             // 2. 用户认证
             if (!authenticateUser()) {
@@ -64,10 +71,9 @@ public class ClientApplication implements CommandLineRunner {
     /**
      * 初始化运行时上下文
      */
-    private static ClientRuntimeContext initializeContext() {
+    private void initializeContext() {
         log.info("初始化运行时上下文...");
         
-        context = new ClientRuntimeContext();
         context.initialize();
         
         // 初始化API客户端（使用配置的服务器地址）
@@ -78,13 +84,12 @@ public class ClientApplication implements CommandLineRunner {
         context.getSyncManager().startWatching();
         
         log.info("运行时上下文初始化完成");
-        return context;
     }
 
     /**
      * 用户认证
      */
-    private static boolean authenticateUser() {
+    private boolean authenticateUser() {
         log.info("开始用户认证...");
         
         try {
@@ -117,7 +122,7 @@ public class ClientApplication implements CommandLineRunner {
     /**
      * 交互式登录
      */
-    private static boolean interactiveLogin() {
+    private boolean interactiveLogin() {
         Scanner scanner = new Scanner(System.in);
         
         System.out.println("=== 云盘客户端登录 ===");
@@ -162,9 +167,9 @@ public class ClientApplication implements CommandLineRunner {
     }
 
     /**
-     * 启动同步循环
+     * 启动文件同步循环
      */
-    private static void startSyncLoop() {
+    private void startSyncLoop() {
         log.info("启动文件同步服务...");
         
         if (!context.getConfig().isEnableAutoSync()) {
@@ -200,7 +205,7 @@ public class ClientApplication implements CommandLineRunner {
     /**
      * 执行同步操作
      */
-    private static void performSync() {
+    private void performSync() {
         try {
             log.debug("开始文件同步...");
             
@@ -221,7 +226,7 @@ public class ClientApplication implements CommandLineRunner {
     /**
      * 启动交互式命令行界面
      */
-    private static void startInteractiveMode() {
+    private void startInteractiveMode() {
         Scanner scanner = new Scanner(System.in);
         
         System.out.println("\n=== 云盘客户端已启动 ===");
@@ -299,7 +304,7 @@ public class ClientApplication implements CommandLineRunner {
     /**
      * 列出文件
      */
-    private static void listFiles() {
+    private void listFiles() {
         // TODO: 实现文件列表功能
         System.out.println("文件列表功能待实现");
     }
@@ -307,7 +312,7 @@ public class ClientApplication implements CommandLineRunner {
     /**
      * 上传文件
      */
-    private static void uploadFile(String filename) {
+    private void uploadFile(String filename) {
         try {
             Path filePath = Paths.get(context.getConfig().getSyncDir(), filename);
             // 检查文件是否存在
@@ -329,7 +334,7 @@ public class ClientApplication implements CommandLineRunner {
     /**
      * 下载文件
      */
-    private static void downloadFile(String filename) {
+    private void downloadFile(String filename) {
         // TODO: 实现文件下载功能
         System.out.println("文件下载功能待实现");
     }
@@ -337,7 +342,7 @@ public class ClientApplication implements CommandLineRunner {
     /**
      * 删除文件
      */
-    private static void deleteFile(String filename) {
+    private void deleteFile(String filename) {
         // TODO: 实现文件删除功能
         System.out.println("文件删除功能待实现");
     }
@@ -345,7 +350,7 @@ public class ClientApplication implements CommandLineRunner {
     /**
      * 显示状态
      */
-    private static void showStatus() {
+    private void showStatus() {
         System.out.println("=== 客户端状态 ===");
         System.out.println("用户: " + context.getUserId());
         System.out.println("同步目录: " + context.getConfig().getSyncDir());
@@ -357,7 +362,7 @@ public class ClientApplication implements CommandLineRunner {
     /**
      * 显示帮助
      */
-    private static void showHelp() {
+    private void showHelp() {
         System.out.println("=== 帮助信息 ===");
         System.out.println("sync - 手动同步文件");
         System.out.println("list - 查看文件列表");
@@ -372,7 +377,7 @@ public class ClientApplication implements CommandLineRunner {
     /**
      * 注册关闭钩子
      */
-    private static void registerShutdownHook() {
+    private void registerShutdownHook() {
         Runtime.getRuntime().addShutdownHook(new Thread(() -> {
             log.info("接收到关闭信号，正在清理资源...");
             shutdown();
@@ -382,7 +387,7 @@ public class ClientApplication implements CommandLineRunner {
     /**
      * 关闭客户端
      */
-    private static void shutdown() {
+    private void shutdown() {
         log.info("正在关闭客户端...");
         isRunning = false;
         

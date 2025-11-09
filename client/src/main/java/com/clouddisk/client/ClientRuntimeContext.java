@@ -11,6 +11,8 @@ import org.apache.hc.client5.http.impl.classic.HttpClients;
 import org.apache.hc.client5.http.impl.io.PoolingHttpClientConnectionManager;
 import org.apache.hc.client5.http.config.ConnectionConfig;
 import org.apache.hc.core5.util.TimeValue;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.stereotype.Component;
 
 import java.io.File;
 import java.io.IOException;
@@ -20,13 +22,23 @@ import java.util.concurrent.TimeUnit;
 
 @Data
 @Slf4j
+@Component
 public class ClientRuntimeContext {
     private String token;
     private String userId;
+    
+    @Autowired
     private ClientProperties config; // 配置
+    
+    @Autowired
     private CloseableHttpClient httpClient; // HTTP客户端
+    
+    @Autowired
     private SyncManager syncManager; // 同步管理器
+    
+    @Autowired
     private DirectoryWatcher directoryWatcher; // 文件监听器
+    
     private FileApiClient fileApiClient; // 文件API客户端
 
     /**
@@ -35,24 +47,15 @@ public class ClientRuntimeContext {
     public void initialize() {
         log.info("初始化运行时上下文...");
         
-        // 初始化配置
-        if(this.config == null) this.config = new ClientProperties();
-
-        // 初始化HTTP客户端（带连接池配置）
-        if(this.httpClient == null) this.httpClient = createHttpClient();
+        // 验证配置
+        config.validate();
 
         // 创建文件API客户端（使用配置的服务器地址）
         if(this.fileApiClient == null) this.fileApiClient = new FileApiClient(config.getServerUrl(), this.httpClient);
 
-        // 创建同步管理器
-        if(this.syncManager == null) this.syncManager = new SyncManager();
-        
         // 设置文件API客户端
         this.syncManager.setFileApiClient(this.fileApiClient);
 
-        // 创建文件监听器
-        if(this.directoryWatcher == null) this.directoryWatcher = new DirectoryWatcher();
-        
         // 配置文件监听器
         try {
             Path syncDir = Paths.get(config.getSyncDir());
@@ -74,23 +77,6 @@ public class ClientRuntimeContext {
         }
         
         log.info("运行时上下文初始化完成");
-    }
-
-    /**
-     * 创建带连接池配置的HTTP客户端
-     */
-    private CloseableHttpClient createHttpClient() {
-        PoolingHttpClientConnectionManager connectionManager = new PoolingHttpClientConnectionManager();
-        connectionManager.setMaxTotal(100);
-        connectionManager.setDefaultMaxPerRoute(20);
-        connectionManager.setDefaultConnectionConfig(
-                ConnectionConfig.custom()
-                        .setTimeToLive(TimeValue.of(30, TimeUnit.SECONDS))
-                        .build());
-        
-        return HttpClients.custom()
-                .setConnectionManager(connectionManager)
-                .build();
     }
     
     /**

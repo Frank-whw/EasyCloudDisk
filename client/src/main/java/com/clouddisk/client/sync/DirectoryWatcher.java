@@ -1,6 +1,8 @@
 package com.clouddisk.client.sync;
 
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.stereotype.Component;
+
 import java.io.File;
 import java.io.IOException;
 import java.nio.file.*;
@@ -10,6 +12,7 @@ import java.util.concurrent.TimeUnit;
 import java.util.function.Consumer;
 
 @Slf4j
+@Component
 public class DirectoryWatcher {
     private WatchService watchService;
     private ExecutorService executorService;
@@ -52,7 +55,7 @@ public class DirectoryWatcher {
                 try {
                     watchService.close();
                 } catch (IOException e) {
-                    log.error("关闭文件监听服务时发生错误", e);
+                    log.error("关闭监听服务时发生错误", e);
                 }
             }
             
@@ -107,19 +110,39 @@ public class DirectoryWatcher {
             while (watching) {
                 WatchKey key = watchService.take();
                 
-                for (WatchEvent<?> event : key.pollEvents()) {
-                    @SuppressWarnings("unchecked")
-                    WatchEvent<Path> pathEvent = (WatchEvent<Path>) event;
+                for (WatchEvent<?> watchEvent : key.pollEvents()) {
+                    WatchEvent.Kind<?> kind = watchEvent.kind();
                     
-                    // 将WatchEvent转换为FileEvent
-                    FileEvent fileEvent = FileEvent.fromWatchEvent(pathEvent, watchDir);
+                    if (kind == StandardWatchEventKinds.OVERFLOW) {
+                        continue;
+                    }
+                    
+                    @SuppressWarnings("unchecked")
+                    WatchEvent<Path> pathEvent = (WatchEvent<Path>) watchEvent;
+                    Path fileName = pathEvent.context();
+                    Path filePath = watchDir.resolve(fileName);
+                    
+                    FileEvent.EventType eventType;
+                    if (kind == StandardWatchEventKinds.ENTRY_CREATE) {
+                        eventType = FileEvent.EventType.CREATE;
+                    } else if (kind == StandardWatchEventKinds.ENTRY_MODIFY) {
+                        eventType = FileEvent.EventType.MODIFY;
+                    } else if (kind == StandardWatchEventKinds.ENTRY_DELETE) {
+                        eventType = FileEvent.EventType.DELETE;
+                    } else {
+                        eventType = FileEvent.EventType.UNKNOWN;
+                    }
+                    
+                    FileEvent fileEvent = new FileEvent(eventType, filePath, pathEvent);
                     
                     if (eventListener != null) {
                         eventListener.accept(fileEvent);
                     }
                 }
                 
-                if (!key.reset()) {
+                boolean valid = key.reset();
+                if (!valid) {
+                    log.warn("监听键失效，停止监听");
                     break;
                 }
             }
@@ -129,5 +152,7 @@ public class DirectoryWatcher {
         } catch (Exception e) {
             log.error("目录监听过程中发生错误", e);
         }
+        
+        log.info("目录监听已停止");
     }
 }

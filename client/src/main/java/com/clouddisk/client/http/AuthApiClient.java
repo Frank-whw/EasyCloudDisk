@@ -1,27 +1,28 @@
 package com.clouddisk.client.http;
 
+import com.clouddisk.client.model.ApiResponse;
 import com.clouddisk.client.model.AuthRequest;
 import com.clouddisk.client.model.AuthResponse;
-import com.clouddisk.client.model.ApiResponse;
+import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import lombok.extern.slf4j.Slf4j;
 import org.apache.hc.client5.http.classic.methods.HttpPost;
 import org.apache.hc.client5.http.impl.classic.CloseableHttpClient;
 import org.apache.hc.client5.http.impl.classic.HttpClients;
-import org.apache.hc.core5.http.io.entity.StringEntity;
+import org.apache.hc.core5.http.ClassicHttpResponse;
+import org.apache.hc.core5.http.ContentType;
 import org.apache.hc.core5.http.ParseException;
 import org.apache.hc.core5.http.io.entity.EntityUtils;
-import org.apache.hc.core5.http.ClassicHttpResponse;
+import org.apache.hc.core5.http.io.entity.StringEntity;
 
 import java.io.IOException;
 import java.nio.charset.StandardCharsets;
 
+@Slf4j
 public class AuthApiClient {
-    // 服务器基础URL，例如 "http://localhost:8080"
+    // 服务器基础URL，例如 "http://ec2-54-95-61-230.ap-northeast-1.compute.amazonaws.com:8080"
     private final String baseUrl;
     private final CloseableHttpClient httpClient;
-    
-    // Jackson ObjectMapper 实例，用于JSON序列化和反序列化
-    // 将其作为字段存储是为了避免重复创建ObjectMapper实例，提高性能
     private final ObjectMapper objectMapper;
 
     public AuthApiClient(String baseUrl) {

@@ -1,4 +1,4 @@
-package com.clouddisk.entity;
+package com.clouddisk.file.entity;
 
 import jakarta.persistence.*;
 import lombok.Data;

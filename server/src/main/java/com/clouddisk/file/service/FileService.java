@@ -1,9 +1,9 @@
-package com.clouddisk.service;
+package com.clouddisk.file.service;
 
-import com.clouddisk.dto.FileResponse;
-import com.clouddisk.dto.FileUploadResponse;
-import com.clouddisk.entity.File;
-import com.clouddisk.repository.FileRepository;
+import com.clouddisk.common.dto.FileResponse;
+import com.clouddisk.common.dto.FileUploadResponse;
+import com.clouddisk.file.entity.File;
+import com.clouddisk.file.repository.FileRepository;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
@@ -56,7 +56,7 @@ public class FileService {
             Optional<File> existingFile = fileRepository.findByUserIdAndContentHash(userId, contentHash);
             if (existingFile.isPresent()) {
                 log.info("文件已存在，跳过上传，文件ID: {}", existingFile.get().getFileId());
-                throw new com.clouddisk.exception.BusinessException("文件重复", 409);
+                throw new com.clouddisk.common.exception.BusinessException("文件重复", 409);
             }
             
             // 生成S3 Key

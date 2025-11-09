@@ -1,6 +1,6 @@
-package com.clouddisk.repository;
+package com.clouddisk.file.repository;
 
-import com.clouddisk.entity.File;
+import com.clouddisk.file.entity.File;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
