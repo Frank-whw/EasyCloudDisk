@@ -1,6 +1,8 @@
 package com.clouddisk.client.sync;
 
 import lombok.Data;
+
+import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.WatchEvent;
 
@@ -10,74 +12,43 @@ import java.nio.file.WatchEvent;
  */
 @Data
 public class FileEvent {
-    /**
-     * 事件类型
-     */
-    private EventType eventType;
-    
-    /**
-     * 受影响的文件路径
-     */
-    private Path filePath;
-    
-    /**
-     * 事件发生的时间戳
-     */
-    private long timestamp;
-    
-    /**
-     * 原始的WatchEvent事件
-     */
-    private WatchEvent<Path> watchEvent;
-    
-    /**
-     * 构造函数
-     * @param eventType 事件类型
-     * @param filePath 文件路径
-     * @param watchEvent 原始WatchEvent
-     */
-    public FileEvent(EventType eventType, Path filePath, WatchEvent<Path> watchEvent) {
+    private final EventType eventType;
+    private final Path filePath;
+    private final long timestamp;
+    private final WatchEvent<Path> watchEvent;
+    private final boolean directory;
+    private final Path rootPath;
+    private final Path previousPath;
+
+    public FileEvent(EventType eventType,
+                     Path filePath,
+                     WatchEvent<Path> watchEvent,
+                     boolean directory,
+                     Path rootPath,
+                     Path previousPath) {
         this.eventType = eventType;
         this.filePath = filePath;
         this.watchEvent = watchEvent;
+        this.directory = directory;
+        this.rootPath = rootPath;
+        this.previousPath = previousPath;
         this.timestamp = System.currentTimeMillis();
     }
-    
-    /**
-     * 事件类型枚举
-     */
+
+    public FileEvent(EventType eventType, Path filePath, WatchEvent<Path> watchEvent) {
+        this(eventType, filePath, watchEvent, false, null, null);
+    }
+
     public enum EventType {
-        /**
-         * 文件创建事件
-         */
         CREATE,
-        
-        /**
-         * 文件修改事件
-         */
         MODIFY,
-        
-        /**
-         * 文件删除事件
-         */
         DELETE,
-        
-        /**
-         * 未知事件类型
-         */
         UNKNOWN
     }
-    
-    /**
-     * 从WatchEvent创建FileEvent
-     * @param watchEvent 原始WatchEvent
-     * @param basePath 监听的基础路径
-     * @return FileEvent对象
-     */
+
     public static FileEvent fromWatchEvent(WatchEvent<Path> watchEvent, Path basePath) {
         WatchEvent.Kind<?> kind = watchEvent.kind();
         Path filePath = basePath.resolve(watchEvent.context());
-        
         EventType eventType;
         if (kind == java.nio.file.StandardWatchEventKinds.ENTRY_CREATE) {
             eventType = EventType.CREATE;
@@ -88,7 +59,8 @@ public class FileEvent {
         } else {
             eventType = EventType.UNKNOWN;
         }
-        
-        return new FileEvent(eventType, filePath, watchEvent);
+
+        boolean directory = Files.isDirectory(filePath);
+        return new FileEvent(eventType, filePath, watchEvent, directory, basePath, null);
     }
 }
