@@ -19,13 +19,15 @@ public interface UserRepository extends JpaRepository<User, String> {
      * @param email 邮箱
      * @return 用户
      */
-    Optional<User> findByEmail(String email);
+    @Query("SELECT u from User u WHERE u.email = :email")
+    Optional<User> findByEmail(@Param("email") String email);
     /**
      * 通过邮箱判断用户是否存在
      * @param email 邮箱
      * @return 用户是否存在
      */
-    boolean existsByEmail(String email);
+    @Query("SELECT CASE WHEN COUNT(u) > 0 THEN true ELSE false END FROM User u WHERE u.email = :email")
+    boolean existsByEmail(@Param("email") String email);
 
     /**
      * 通过用户Id查找用户
