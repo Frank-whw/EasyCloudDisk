@@ -27,12 +27,12 @@ jwt:
 
 # AWS配置（通用）
 aws:
+  access-key-id: ${AWS_ACCESS_KEY_ID:your-access-key-id}
+  secret-access-key: ${AWS_SECRET_ACCESS_KEY:your-secret-access-key}
+  region: ${AWS_REGION:us-east-1}
   s3:
     bucket-name: ${AWS_S3_BUCKET:clouddisk-bucket}
-    region: ${AWS_REGION:us-east-1}
-  credentials:
-    access-key: ${AWS_ACCESS_KEY:your-access-key}
-    secret-key: ${AWS_SECRET_KEY:your-secret-key}
+    endpoint: ${AWS_S3_ENDPOINT:}  # 可选，用于MinIO等兼容S3服务
 
 # 日志配置（通用）
 logging:
