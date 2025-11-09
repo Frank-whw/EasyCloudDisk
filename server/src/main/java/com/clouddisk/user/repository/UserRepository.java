@@ -3,6 +3,7 @@ package com.clouddisk.user.repository;
 import com.clouddisk.user.entity.User;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Query;
+import org.springframework.data.repository.query.Param;
 import org.springframework.stereotype.Repository;
 import java.util.Optional;
 
@@ -32,7 +33,7 @@ public interface UserRepository extends JpaRepository<User, String> {
      * @return 用户对象（可选）
      */
     @Query("SELECT u from User u WHERE u.user_id = :user_id")
-    Optional<User> findByUserId(String user_id);
+    Optional<User> findByUserId(@Param("user_id") String user_id);
 
 
 }
