@@ -2,81 +2,98 @@ package com.clouddisk.client.sync;
 
 import com.clouddisk.client.util.FileUtils;
 
-import java.io.File;
-import java.io.FileInputStream;
-import java.io.FileOutputStream;
+import java.io.ByteArrayInputStream;
+import java.io.ByteArrayOutputStream;
 import java.io.IOException;
+import java.io.InputStream;
+import java.io.OutputStream;
 import java.nio.file.Files;
 import java.nio.file.Path;
-import java.util.zip.ZipEntry;
-import java.util.zip.ZipInputStream;
-import java.util.zip.ZipOutputStream;
+import java.util.zip.GZIPInputStream;
+import java.util.zip.GZIPOutputStream;
+import java.util.zip.ZipException;
 
+/**
+ * 压缩/解压服务，根据文件大小决定是否启用压缩。
+ */
 public class CompressionService {
-    
+
+    private static final int BUFFER_SIZE = 8 * 1024;
+    private long thresholdBytes = 1_048_576L; // 默认 1MB
+
+    public CompressionService() {
+    }
+
+    public CompressionService(long thresholdBytes) {
+        setThresholdBytes(thresholdBytes);
+    }
+
+    public void setThresholdBytes(long thresholdBytes) {
+        if (thresholdBytes < 0) {
+            throw new IllegalArgumentException("thresholdBytes must be >= 0");
+        }
+        this.thresholdBytes = thresholdBytes;
+    }
+
+    public long getThresholdBytes() {
+        return thresholdBytes;
+    }
+
+    public boolean shouldCompress(long fileSizeBytes) {
+        return fileSizeBytes >= thresholdBytes;
+    }
+
     /**
-     * 压缩源文件
-     * @param source 源文件路径
-     * @return 压缩后的字节数组
+     * 压缩文件，当文件小于阈值时直接返回原始字节。
      */
     public byte[] compress(Path source) throws IOException {
         FileUtils.checkFile(source);
-        Path tempPath = FileUtils.createTempFile("compressed", ".zip");
-        try(FileOutputStream fos = new FileOutputStream(tempPath.toFile())) {
-            ZipOutputStream zos = new ZipOutputStream(fos);
-            FileInputStream fis = new FileInputStream(source.toFile());
-            zos.putNextEntry(new ZipEntry(source.getFileName().toString()));
-            byte[] buffer = new byte[1024];
-            int length;
-            while ((length = fis.read(buffer)) > 0) {
-                zos.write(buffer, 0, length);
-            }
-            zos.closeEntry();
-            zos.finish();
+        Path normalized = FileUtils.normalize(source);
+        long size = Files.size(normalized);
+        if (!shouldCompress(size)) {
+            return Files.readAllBytes(normalized);
         }
-        // 读取压缩后的数据
-        byte[] compressedData = Files.readAllBytes(tempPath);
-        FileUtils.deleteFile(tempPath.toFile()); // 使用正确的删除方法
-        return compressedData;
+        try (ByteArrayOutputStream baos = new ByteArrayOutputStream();
+             InputStream inputStream = Files.newInputStream(normalized);
+             GZIPOutputStream gzipOutputStream = new GZIPOutputStream(baos)) {
+            copy(inputStream, gzipOutputStream);
+            gzipOutputStream.finish();
+            return baos.toByteArray();
+        }
     }
-    
+
     /**
-     * 解压数据到目标文件
-     * @param payload 压缩的数据
-     * @param target 目标路径
+     * 解压数据，若发现数据未压缩则原样写入目标文件。
      */
-    public void decompress(byte[] payload, Path target) throws  IOException{
-        // check the agruments
-        if(payload == null || payload.length == 0){
+    public void decompress(byte[] payload, Path target) throws IOException {
+        if (payload == null || payload.length == 0) {
             throw new IllegalArgumentException("payload cannot be null or empty");
         }
-        if(target == null){
+        if (target == null) {
             throw new IllegalArgumentException("target cannot be null");
         }
-        // check the target file
-        FileUtils.checkFile(target);
-        // create a temp file to store the decompressed data
-        Path tempPath = FileUtils.createTempFile("decompressed", ".zip");
-        try{
-            Files.write(tempPath, payload);
-            try(FileInputStream fis = new FileInputStream(tempPath.toFile());
-                ZipInputStream zis = new ZipInputStream(fis)) {
-
-                ZipEntry entry = zis.getNextEntry();
-                if (entry != null){
-                    try(FileOutputStream fos = new FileOutputStream(target.toFile())){
-                        byte[] buffer = new byte[1024];
-                        int length;
-                        while ((length = zis.read(buffer)) > 0) {
-                            fos.write(buffer, 0, length);
-                        }
-                    }
-                    zis.closeEntry();
-                }
-
+        FileUtils.ensureParentDirectory(target);
+        try (OutputStream out = Files.newOutputStream(target)) {
+            if (!tryDecompress(payload, out)) {
+                out.write(payload);
             }
-        }finally {
-            FileUtils.deleteFile(tempPath.toFile());
+        }
+    }
+
+    private boolean tryDecompress(byte[] payload, OutputStream outputStream) throws IOException {
+        try (GZIPInputStream gzipInputStream = new GZIPInputStream(new ByteArrayInputStream(payload))) {
+            copy(gzipInputStream, outputStream);
+            return true;
+        } catch (ZipException ex) {
+            return false;
+        }
+    }
+
+    private void copy(InputStream in, OutputStream out) throws IOException {
+        byte[] buffer = new byte[BUFFER_SIZE];
+        int read;
+        while ((read = in.read(buffer)) != -1) {
+            out.write(buffer, 0, read);
         }
     }
 }
