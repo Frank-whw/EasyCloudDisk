@@ -14,6 +14,7 @@ import org.springframework.boot.autoconfigure.SpringBootApplication;
 import java.io.File;
 import java.nio.file.Path;
 import java.nio.file.Paths;
+import java.util.List;
 import java.util.Scanner;
 import java.util.concurrent.Executors;
 import java.util.concurrent.ScheduledExecutorService;
@@ -361,8 +362,35 @@ public class ClientApplication implements CommandLineRunner {
      * 列出文件
      */
     private void listFiles() {
-        // TODO: 实现文件列表功能
-        System.out.println("文件列表功能待实现");
+        try {
+            System.out.println("\n=== 云盘文件 ===");
+            
+            List<com.clouddisk.client.model.FileResponse> files = context.getFileApiClient().listFiles();
+            
+            if (files == null || files.isEmpty()) {
+                System.out.println("云盘中还没有文件,可以使用 upload 命令上传文件\n");
+                return;
+            }
+            
+            System.out.println(String.format("%-40s %-15s %-20s", "文件名", "大小", "上传时间"));
+            System.out.println("------------------------------------------------------------------------------------");
+            
+            for (com.clouddisk.client.model.FileResponse file : files) {
+                String name = file.getName() != null ? file.getName() : "未知";
+                String size = file.getFormattedSize();
+                String time = file.getCreatedAt() != null ? 
+                    file.getCreatedAt().toString().substring(0, 19).replace('T', ' ') : "未知";
+                
+                System.out.println(String.format("%-40s %-15s %-20s", name, size, time));
+            }
+            
+            System.out.println("------------------------------------------------------------------------------------");
+            System.out.println("总计: " + files.size() + " 个文件\n");
+            
+        } catch (Exception e) {
+            log.error("列出文件失败", e);
+            System.out.println("列出文件失败: " + e.getMessage());
+        }
     }
 
     /**

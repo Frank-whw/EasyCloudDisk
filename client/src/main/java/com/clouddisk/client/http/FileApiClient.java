@@ -2,9 +2,11 @@ package com.clouddisk.client.http;
 
 import com.clouddisk.client.model.ApiResponse;
 import com.clouddisk.client.model.FileMetadata;
+import com.clouddisk.client.model.FileResponse;
 import com.clouddisk.client.model.FileUploadRequest;
 import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.fasterxml.jackson.datatype.jsr310.JavaTimeModule;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.hc.client5.http.classic.methods.HttpGet;
 import org.apache.hc.client5.http.classic.methods.HttpPost;
@@ -50,9 +52,9 @@ public class FileApiClient {
     
     /**
      * 获取文件列表
-     * @return 文件元数据列表
+     * @return 文件响应列表
      */
-    public List<FileMetadata> listFiles() {
+    public List<FileResponse> listFiles() {
         try {
             HttpGet httpGet = new HttpGet(baseUrl + "/files");
             
@@ -67,14 +69,18 @@ public class FileApiClient {
                 if (statusCode >= 200 && statusCode < 300) {
                     // 解析响应
                     ObjectMapper mapper = new ObjectMapper();
-                    ApiResponse<List<FileMetadata>> apiResponse = mapper.readValue(
+                    // 配置ObjectMapper以支持Java 8时间类型
+                    mapper.findAndRegisterModules();
+                    
+                    ApiResponse<List<FileResponse>> apiResponse = mapper.readValue(
                         response.getEntity().getContent(),
-                        new TypeReference<ApiResponse<List<FileMetadata>>>() {}
+                        new TypeReference<ApiResponse<List<FileResponse>>>() {}
                     );
                     
                     if (apiResponse.isSuccess()) {
-                        log.info("获取文件列表成功，共 {} 个文件", apiResponse.getData().size());
-                        return apiResponse.getData();
+                        List<FileResponse> files = apiResponse.getData();
+                        log.debug("获取文件列表成功,共 {} 个文件", files != null ? files.size() : 0);
+                        return files != null ? files : new ArrayList<>();
                     } else {
                         log.error("获取文件列表失败: {}", apiResponse.getMessage());
                         return new ArrayList<>();
