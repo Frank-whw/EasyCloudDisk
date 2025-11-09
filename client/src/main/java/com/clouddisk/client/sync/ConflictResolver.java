@@ -3,199 +3,133 @@ package com.clouddisk.client.sync;
 import com.clouddisk.client.model.FileMetadata;
 import lombok.extern.slf4j.Slf4j;
 
+import java.io.IOException;
+import java.nio.file.Files;
 import java.nio.file.Path;
-import java.nio.file.Paths;
+import java.time.Instant;
+import java.time.ZoneOffset;
+import java.time.format.DateTimeFormatter;
+import java.util.Objects;
 
 /**
- * 冲突解决器
- * 用于处理本地文件与远程文件之间的冲突
+ * 冲突解决器，用于确定本地与远程文件冲突时的处理策略。
  */
 @Slf4j
 public class ConflictResolver {
-    
-    /**
-     * 解决文件冲突的策略枚举
-     */
+
+    private static final DateTimeFormatter TIMESTAMP_FORMATTER =
+        DateTimeFormatter.ofPattern("yyyyMMdd_HHmmssSSS").withZone(ZoneOffset.UTC);
+
     public enum ConflictResolutionStrategy {
-        /**
-         * 使用本地文件版本
-         */
         USE_LOCAL,
-        
-        /**
-         * 使用远程文件版本
-         */
         USE_REMOTE,
-        
-        /**
-         * 保留两个版本，重命名本地文件
-         */
         KEEP_BOTH,
-        
-        /**
-         * 根据修改时间决定使用哪个版本
-         */
         USE_NEWER
     }
-    
-    /**
-     * 默认冲突解决策略
-     */
+
     private ConflictResolutionStrategy defaultStrategy = ConflictResolutionStrategy.USE_NEWER;
-    
-    /**
-     * 构造函数，使用默认策略
-     */
+
     public ConflictResolver() {
     }
-    
-    /**
-     * 构造函数，指定默认策略
-     * @param defaultStrategy 默认冲突解决策略
-     */
+
     public ConflictResolver(ConflictResolutionStrategy defaultStrategy) {
-        this.defaultStrategy = defaultStrategy;
+        this.defaultStrategy = Objects.requireNonNull(defaultStrategy);
     }
-    
-    /**
-     * 解决文件冲突
-     * @param local 本地文件路径
-     * @param remote 远程文件元数据
-     * @return 解决冲突后的文件路径
-     */
-    public Path resolve(Path local, FileMetadata remote) {
+
+    public ConflictResolutionResult resolve(Path local, FileMetadata remote) {
         return resolve(local, remote, defaultStrategy);
     }
-    
-    /**
-     * 解决文件冲突
-     * @param local 本地文件路径
-     * @param remote 远程文件元数据
-     * @param strategy 冲突解决策略
-     * @return 解决冲突后的文件路径
-     */
-    public Path resolve(Path local, FileMetadata remote, ConflictResolutionStrategy strategy) {
-        log.debug("开始解决文件冲突: local={}, remote={}, strategy={}", 
-                  local, remote.getFileName(), strategy);
-        
-        switch (strategy) {
-            case USE_LOCAL:
-                return resolveUseLocal(local, remote);
-                
-            case USE_REMOTE:
-                return resolveUseRemote(local, remote);
-                
-            case KEEP_BOTH:
-                return resolveKeepBoth(local, remote);
-                
-            case USE_NEWER:
-                return resolveUseNewer(local, remote);
-                
-            default:
-                log.warn("未知的冲突解决策略: {}, 使用默认策略", strategy);
-                return resolve(local, remote, defaultStrategy);
-        }
+
+    public ConflictResolutionResult resolve(Path local,
+                                            FileMetadata remote,
+                                            ConflictResolutionStrategy strategy) {
+        Objects.requireNonNull(local, "local");
+        Objects.requireNonNull(remote, "remote");
+        Objects.requireNonNull(strategy, "strategy");
+
+        log.debug("解决文件冲突: local={}, remote={}, strategy={}",
+            local, remote.getFileName(), strategy);
+
+        return switch (strategy) {
+            case USE_LOCAL -> keepLocalOnly(local, strategy);
+            case USE_REMOTE -> useRemote(local, strategy);
+            case KEEP_BOTH -> keepBoth(local, strategy);
+            case USE_NEWER -> useNewer(local, remote, strategy);
+        };
     }
-    
-    /**
-     * 使用本地文件版本解决冲突
-     * @param local 本地文件路径
-     * @param remote 远程文件元数据
-     * @return 本地文件路径
-     */
-    private Path resolveUseLocal(Path local, FileMetadata remote) {
-        log.debug("使用本地文件版本解决冲突: {}", local.getFileName());
-        // 直接返回本地文件路径，表示保留本地版本
-        return local;
+
+    private ConflictResolutionResult keepLocalOnly(Path local,
+                                                   ConflictResolutionStrategy strategy) {
+        return new ConflictResolutionResult(false, local, null, strategy);
     }
-    
-    /**
-     * 使用远程文件版本解决冲突
-     * @param local 本地文件路径
-     * @param remote 远程文件元数据
-     * @return 远程文件应保存到的本地路径
-     */
-    private Path resolveUseRemote(Path local, FileMetadata remote) {
-        log.debug("使用远程文件版本解决冲突: {}", remote.getFileName());
-        // 返回本地文件路径，表示应该用远程文件覆盖本地文件
-        return local;
+
+    private ConflictResolutionResult useRemote(Path local,
+                                               ConflictResolutionStrategy strategy) {
+        return new ConflictResolutionResult(true, local, null, strategy);
     }
-    
-    /**
-     * 保留两个版本解决冲突
-     * @param local 本地文件路径
-     * @param remote 远程文件元数据
-     * @return 重命名后的本地文件路径
-     */
-    private Path resolveKeepBoth(Path local, FileMetadata remote) {
-        log.debug("保留两个版本解决冲突: local={}, remote={}", 
-                  local.getFileName(), remote.getFileName());
-        
-        // 生成新的文件名，添加时间戳以避免冲突
-        String fileName = local.getFileName().toString();
-        String newName = generateUniqueFileName(fileName);
-        return local.getParent().resolve(newName);
+
+    private ConflictResolutionResult keepBoth(Path local,
+                                              ConflictResolutionStrategy strategy) {
+        Path backupPath = generateConflictPath(local);
+        return new ConflictResolutionResult(true, local, backupPath, strategy);
     }
-    
-    /**
-     * 根据修改时间使用较新版本解决冲突
-     * @param local 本地文件路径
-     * @param remote 远程文件元数据
-     * @return 应该保留的文件路径
-     */
-    private Path resolveUseNewer(Path local, FileMetadata remote) {
-        log.debug("根据修改时间使用较新版本解决冲突: local={}, remote={}", 
-                  local.getFileName(), remote.getFileName());
-        
-        // TODO: 获取本地文件的最后修改时间
-        // 这里需要实际获取本地文件的最后修改时间
-        long localLastModified = System.currentTimeMillis(); // 临时值，需要替换为实际值
+
+    private ConflictResolutionResult useNewer(Path local,
+                                              FileMetadata remote,
+                                              ConflictResolutionStrategy strategy) {
+        long localLastModified = safeLastModified(local);
         long remoteLastModified = remote.getLastModified();
-        
-        // 比较两个文件的修改时间
         if (localLastModified >= remoteLastModified) {
-            log.debug("本地文件较新，保留本地版本");
-            return local; // 本地文件较新，保留本地版本
-        } else {
-            log.debug("远程文件较新，使用远程版本");
-            return local; // 远程文件较新，应该用远程文件覆盖本地文件
+            log.debug("本地较新(本地: {}, 远程: {})，保留本地", localLastModified, remoteLastModified);
+            return keepLocalOnly(local, strategy);
         }
+        log.debug("远程较新(本地: {}, 远程: {})，使用远程版本", localLastModified, remoteLastModified);
+        return useRemote(local, strategy);
     }
-    
-    /**
-     * 生成唯一的文件名
-     * @param originalName 原始文件名
-     * @return 带时间戳的唯一文件名
-     */
-    private String generateUniqueFileName(String originalName) {
-        // 获取文件扩展名
+
+    private Path generateConflictPath(Path local) {
+        String fileName = local.getFileName().toString();
         String extension = "";
-        String nameWithoutExtension = originalName;
-        
-        int lastDotIndex = originalName.lastIndexOf('.');
+        String nameWithoutExtension = fileName;
+        int lastDotIndex = fileName.lastIndexOf('.');
         if (lastDotIndex > 0) {
-            extension = originalName.substring(lastDotIndex);
-            nameWithoutExtension = originalName.substring(0, lastDotIndex);
+            extension = fileName.substring(lastDotIndex);
+            nameWithoutExtension = fileName.substring(0, lastDotIndex);
         }
-        
-        // 添加时间戳生成唯一文件名
-        long timestamp = System.currentTimeMillis();
-        return nameWithoutExtension + "_" + timestamp + extension;
+        Path parent = local.getParent();
+        String timestamp = TIMESTAMP_FORMATTER.format(Instant.now());
+        Path candidate = parent.resolve(nameWithoutExtension + "_conflict_" + timestamp + extension);
+        int counter = 1;
+        while (Files.exists(candidate)) {
+            candidate = parent.resolve(nameWithoutExtension + "_conflict_" + timestamp + "_" + counter + extension);
+            counter++;
+        }
+        return candidate;
     }
-    
-    /**
-     * 设置默认冲突解决策略
-     * @param strategy 冲突解决策略
-     */
+
+    private long safeLastModified(Path path) {
+        try {
+            return Files.getLastModifiedTime(path).toMillis();
+        } catch (IOException e) {
+            log.warn("获取文件修改时间失败: {}", path, e);
+            return 0L;
+        }
+    }
+
     public void setDefaultStrategy(ConflictResolutionStrategy strategy) {
-        this.defaultStrategy = strategy;
+        this.defaultStrategy = Objects.requireNonNull(strategy);
     }
-    
-    /**
-     * 获取默认冲突解决策略
-     * @return 默认冲突解决策略
-     */
+
     public ConflictResolutionStrategy getDefaultStrategy() {
         return defaultStrategy;
+    }
+
+    public record ConflictResolutionResult(boolean downloadRemote,
+                                           Path remoteTarget,
+                                           Path localBackup,
+                                           ConflictResolutionStrategy appliedStrategy) {
+        public boolean requiresBackup() {
+            return localBackup != null;
+        }
     }
 }
