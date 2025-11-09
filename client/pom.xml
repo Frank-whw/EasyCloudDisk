@@ -19,7 +19,6 @@
         <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
         <jackson.version>2.15.2</jackson.version>
         <slf4j.version>2.0.7</slf4j.version>
-        <logback.version>1.4.8</logback.version>
         <spring-boot.version>3.1.5</spring-boot.version>
     </properties>
 
@@ -70,10 +69,12 @@
             <artifactId>slf4j-api</artifactId>
             <version>${slf4j.version}</version>
         </dependency>
+        <!-- 让Spring Boot管理Logback版本 -->
         <dependency>
             <groupId>ch.qos.logback</groupId>
             <artifactId>logback-classic</artifactId>
-            <version>${logback.version}</version>
+            <!-- 移除版本号 -->
+            <!-- <version>${logback.version}</version> -->
         </dependency>
 
         <!-- 目录监控（监听本地文件变化） -->
