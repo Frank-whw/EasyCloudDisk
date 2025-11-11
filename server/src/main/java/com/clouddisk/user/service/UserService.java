@@ -51,9 +51,9 @@ public class UserService {
         // 3. 保存用户到数据库
         User savedUser = userRepository.save(user);
         // 4. 生成JWT令牌
-        String token = jwtTokenProvider.generateToken(savedUser.getUser_id());
+        String token = jwtTokenProvider.generateToken(savedUser.getUserId().toString());
         // 5. 返回认证响应
-        return new AuthResponse(token, UUID.fromString(savedUser.getUser_id()), savedUser.getEmail());
+        return new AuthResponse(token, savedUser.getUserId(), savedUser.getEmail());
     }
     /**
      * 登录
@@ -73,19 +73,9 @@ public class UserService {
         User user = userRepository.findByEmail(authRequest.getEmail())
                 .orElseThrow(() -> new com.clouddisk.common.exception.BusinessException("用户不存在", 404));
         // 3. 生成JWT令牌
-        String token = jwtTokenProvider.generateToken(user.getUser_id());
+        String token = jwtTokenProvider.generateToken(user.getUserId().toString());
         // 4. 返回认证响应
-        return new AuthResponse(token, UUID.fromString(user.getUser_id()), user.getEmail());
-    }
-    /**
-     * 获取当前用户信息
-     * @param userId 用户ID
-     * @return 用户信息
-     * @throws Exception 用户不存在
-     */
-    @Transactional(readOnly = true) // 开启事务
-    public Optional<User> findByUserId(String userId) {
-        return userRepository.findByUserId(userId);
+        return new AuthResponse(token, user.getUserId(), user.getEmail());
     }
     /**
      * 根据邮箱查找用户

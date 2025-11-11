@@ -42,7 +42,7 @@ public class FileService {
     }
     
     /**
-     * 上传文件
+     * 上传文件（支持秒传）
      */
     @Transactional
     public FileUploadResponse uploadFile(UUID userId, MultipartFile file, String filePath, String contentHashOpt) {
@@ -54,25 +54,36 @@ public class FileService {
                     ? contentHashOpt
                     : calculateFileHash(file);
             
-            // 检查文件是否已存在（基于内容哈希）
-            Optional<File> existingFile = fileRepository.findByUserIdAndContentHash(userId, contentHash);
-            if (existingFile.isPresent()) {
-                log.info("文件已存在，跳过上传，文件ID: {}", existingFile.get().getFileId());
-                throw new com.clouddisk.common.exception.BusinessException("文件重复", 409);
+            String fileName = file.getOriginalFilename();
+            String normalizedPath = filePath != null ? filePath : "/";
+            
+            // 检查用户是否已有相同文件（基于内容哈希）- 防止重复上传
+            Optional<File> userExistingFile = fileRepository.findByUserIdAndContentHash(userId, contentHash);
+            if (userExistingFile.isPresent()) {
+                log.info("用户已有相同内容文件，拒绝重复上传，文件ID: {}", userExistingFile.get().getFileId());
+                throw new BusinessException("文件重复", 409);
             }
             
-            // 生成S3 Key
-            String fileName = file.getOriginalFilename();
-            String s3Key = generateS3Key(userId, fileName);
+            // 检查系统中是否已存在相同内容的文件（跨用户去重，秒传）
+            Optional<File> globalExistingFile = fileRepository.findFirstByContentHash(contentHash);
+            String s3Key;
             
-            // 上传到S3
-            String s3Url = s3Service.uploadFile(file, s3Key);
+            if (globalExistingFile.isPresent()) {
+                // 秒传：复用已存在的 S3 对象
+                s3Key = globalExistingFile.get().getS3Key();
+                log.info("秒传成功！复用 S3 对象: {}", s3Key);
+            } else {
+                // 正常上传到 S3
+                s3Key = generateS3Key(userId, fileName);
+                s3Service.uploadFile(file, s3Key);
+                log.info("文件上传到 S3 成功: {}", s3Key);
+            }
             
-            // 保存文件信息到数据库
+            // 创建文件元数据记录
             File fileEntity = new File(
                 userId,
                 fileName,
-                filePath != null ? filePath : "/",
+                normalizedPath,
                 s3Key,
                 file.getSize(),
                 contentHash
@@ -80,7 +91,7 @@ public class FileService {
             
             fileEntity = fileRepository.save(fileEntity);
             
-            log.info("文件上传成功，文件ID: {}", fileEntity.getFileId());
+            log.info("文件元数据保存成功，文件ID: {}", fileEntity.getFileId());
             
             return new FileUploadResponse(
                 fileEntity.getFileId(),
@@ -96,7 +107,7 @@ public class FileService {
     }
     
     /**
-     * 删除文件
+     * 删除文件（支持引用计数，避免误删共享 S3 对象）
      */
     @Transactional
     public void deleteFile(UUID userId, UUID fileId) {
@@ -110,13 +121,23 @@ public class FileService {
             throw new RuntimeException("无权删除此文件");
         }
         
-        // 从S3删除文件
-        s3Service.deleteFile(file.getS3Key());
+        String s3Key = file.getS3Key();
         
-        // 从数据库删除记录
+        // 先删除数据库记录
         fileRepository.delete(file);
+        log.info("文件元数据已删除，文件ID: {}", fileId);
         
-        log.info("文件删除成功，文件ID: {}", fileId);
+        // 检查 S3 对象是否还被其他文件引用
+        long refCount = fileRepository.countByS3Key(s3Key);
+        if (refCount == 0) {
+            // 没有其他引用，可以安全删除 S3 对象
+            s3Service.deleteFile(s3Key);
+            log.info("S3 对象已删除: {}", s3Key);
+        } else {
+            log.info("S3 对象仍被 {} 个文件引用，保留: {}", refCount, s3Key);
+        }
+        
+        log.info("文件删除完成，文件ID: {}", fileId);
     }
     
     /**

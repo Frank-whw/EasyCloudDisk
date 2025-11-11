@@ -49,4 +49,14 @@ public interface FileRepository extends JpaRepository<File, UUID> {
      */
     List<File> findByUserIdAndFilePathStartingWithOrderByFilePathAscNameAsc(
             UUID userId, String filePathPrefix);
+    
+    /**
+     * 统计指定 S3 key 的文件引用数量（用于删除时检查）
+     */
+    long countByS3Key(String s3Key);
+    
+    /**
+     * 根据 contentHash 查找所有文件（跨用户，用于全局去重）
+     */
+    Optional<File> findFirstByContentHash(String contentHash);
 }

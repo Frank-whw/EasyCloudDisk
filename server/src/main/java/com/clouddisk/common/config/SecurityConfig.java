@@ -90,6 +90,7 @@ public class SecurityConfig {
                 .sessionManagement(session -> session.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
                 // 4. 配置请求授权规则
                 .authorizeHttpRequests(auth -> auth
+                        .requestMatchers("/health", "/actuator/**").permitAll() // 健康检查端点
                         .requestMatchers(HttpMethod.POST, "/auth/register").permitAll()
                         .requestMatchers("/auth/**").permitAll() // 允许所有人访问认证相关接口
                         .anyRequest().authenticated() // 其他所有请求都需要认证

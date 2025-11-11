@@ -70,7 +70,7 @@ public class FileController {
     @GetMapping("/{fileId}/download")
     public ResponseEntity<InputStreamResource> downloadFile(
             @AuthenticationPrincipal String userIdPrincipal,
-            @PathVariable UUID fileId) {
+            @PathVariable("fileId") UUID fileId) {
         // 从principal中获取用户ID
         UUID userId = UUID.fromString(userIdPrincipal);
 
@@ -98,7 +98,7 @@ public class FileController {
     @DeleteMapping("/{fileId}")
     public ApiResponse<Void> deleteFile(
             @AuthenticationPrincipal String userIdPrincipal,
-            @PathVariable UUID fileId) {
+            @PathVariable("fileId") UUID fileId) {
         // 从principal中获取用户ID
         UUID userId = UUID.fromString(userIdPrincipal);
 
@@ -112,7 +112,7 @@ public class FileController {
     @GetMapping("/{fileId}")
     public ApiResponse<FileResponse> getFileInfo(
             @AuthenticationPrincipal String userIdPrincipal,
-            @PathVariable UUID fileId) {
+            @PathVariable("fileId") UUID fileId) {
         // 从principal中获取用户ID
         UUID userId = UUID.fromString(userIdPrincipal);
 

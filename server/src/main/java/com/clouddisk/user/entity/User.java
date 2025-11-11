@@ -19,40 +19,36 @@ import java.util.UUID;
 public class User implements UserDetails {
     @Id
     @GeneratedValue(strategy = GenerationType.UUID)
-    @Column(name = "user_id", length = 36)
-    private String user_id;
+    @Column(name = "user_id")
+    private UUID userId;
 
     @Column(unique = true, nullable = false, name = "email")
     private String email;
 
     @Column(nullable = false, name = "password_hash")
-    private String password_hash;
+    private String passwordHash;
 
     @Column(name = "created_at")
-    private LocalDateTime created_at;
+    private LocalDateTime createdAt;
 
     @Column(name = "updated_at")
-    private LocalDateTime updated_at;
+    private LocalDateTime updatedAt;
 
     public User() {}
-    public User(String email, String password_hash){
-        this.user_id = UUID.randomUUID().toString();
+    public User(String email, String passwordHash){
         this.email = email;
-        this.password_hash = password_hash;
-        this.created_at = LocalDateTime.now();
-        this.updated_at = LocalDateTime.now();
+        this.passwordHash = passwordHash;
     }
+    
     @PrePersist
     protected void onCreate() {
-        if (this.user_id == null) {
-            this.user_id = UUID.randomUUID().toString();
-        }
-        this.created_at = LocalDateTime.now();
-        this.updated_at = LocalDateTime.now();
+        this.createdAt = LocalDateTime.now();
+        this.updatedAt = LocalDateTime.now();
     }
+    
     @PreUpdate
     protected void onUpdate() {
-        this.updated_at = LocalDateTime.now();
+        this.updatedAt = LocalDateTime.now();
     }
 
     // UserDetails接口实现
@@ -63,7 +59,7 @@ public class User implements UserDetails {
 
     @Override
     public String getPassword() {
-        return password_hash;
+        return passwordHash;
     }
 
     @Override

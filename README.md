@@ -1,4 +1,337 @@
-# SimpleCloudDrive
+# Cloud Disk - 云盘系统
+
+基于 Spring Boot + AWS S3 的云存储系统，支持文件上传、下载、去重等功能。
+
+**项目状态**: 已部署到 AWS EC2 + S3
+
+---
+
+## 快速开始
+
+
+### 方式一：使用已部署的云端服务（推荐）
+
+**后端服务已部署**: http://54.95.61.230:8080
+
+1. **启动本地 HTTP 服务器（必需，避免 CORS 错误）**
+   ```powershell
+   # 在 PowerShell 中执行
+   cd D:\Vs_C\Cloud\client
+   python -m http.server 3000
+   ```
+   
+   或者使用 Node.js:
+   ```powershell
+   cd D:\Vs_C\Cloud\client
+   npx http-server -p 3000
+   ```
+
+2. **打开前端界面**
+   
+   在浏览器访问: **http://localhost:3000**
+   
+   **注意**: 不要直接双击 `index.html` 文件，会出现跨域错误！
+
+2. **API 测试**
+   ```bash
+   # 健康检查
+   curl http://54.95.61.230:8080/health
+   
+   # 注册用户
+   curl -X POST http://54.95.61.230:8080/auth/register \
+     -H "Content-Type: application/json" \
+     -d '{"email":"test@example.com","password":"Test123456"}'
+   
+   # 登录
+   curl -X POST http://54.95.61.230:8080/auth/login \
+     -H "Content-Type: application/json" \
+     -d '{"email":"test@example.com","password":"Test123456"}'
+   ```
+
+### 方式二：本地启动后端服务
+
+1. **克隆项目并进入服务器目录**
+   ```bash
+   cd Cloud/server
+   ```
+
+2. **配置 AWS 凭证**
+   
+   创建或编辑 `~/.aws/credentials`:
+   ```ini
+   [default]
+   aws_access_key_id = YOUR_ACCESS_KEY
+   aws_secret_access_key = YOUR_SECRET_KEY
+   ```
+   
+   或者设置环境变量:
+   ```bash
+   export AWS_ACCESS_KEY_ID=your_access_key
+   export AWS_SECRET_ACCESS_KEY=your_secret_key
+   ```
+
+3. **创建 S3 Bucket**
+   ```bash
+   aws s3 mb s3://your-bucket-name --region ap-northeast-1
+   ```
+
+4. **编译项目**
+   ```bash
+   mvn clean package -DskipTests
+   ```
+
+5. **启动服务**
+   ```bash
+   java -jar target/clouddisk-server-1.0.0.jar \
+     --jwt.secret=your-super-secret-key-must-be-at-least-256-bits-long \
+     --aws.region=ap-northeast-1 \
+     --aws.s3.bucket-name=your-bucket-name \
+     --spring.profiles.active=dev
+   ```
+   
+   服务将在 `http://localhost:8080` 启动
+
+6. **验证服务**
+   ```bash
+   # 健康检查
+   curl http://localhost:8080/health
+   
+   # 应返回: {"status":"UP","timestamp":...}
+   ```
+
+### 方式三：前端连接本地服务
+
+如果你在本地启动了后端服务，需要修改前端配置:
+
+1. **修改 API 地址**
+   
+   编辑 `client/index.html`，找到第 276 行:
+   ```javascript
+   const API_BASE_URL = 'http://54.95.61.230:8080';
+   ```
+   
+   改为:
+   ```javascript
+   const API_BASE_URL = 'http://localhost:8080';
+   ```
+
+2. **打开前端**
+   ```bash
+   # 直接打开
+   open client/index.html  # macOS
+   start client/index.html # Windows
+   
+   # 或使用 HTTP 服务器
+   cd client
+   python3 -m http.server 3000
+   # 访问 http://localhost:3000
+   ```
+
+---
+
+## 完整测试流程
+
+### 1. 使用前端界面测试（推荐）
+
+1. **打开前端**: `client/index.html`
+2. **注册账号**: 输入邮箱和密码(至少8位，包含字母和数字)
+3. **登录系统**: 使用刚注册的账号登录
+4. **上传文件**: 点击上传区域选择文件
+5. **查看文件**: 文件列表会自动刷新
+6. **下载文件**: 点击"下载"按钮
+7. **删除文件**: 点击"删除"按钮
+
+### 2. 使用 API 测试
+
+```bash
+# 设置服务器地址（根据实际情况修改）
+API_URL="http://54.95.61.230:8080"  # 云端
+# API_URL="http://localhost:8080"   # 本地
+
+# 1. 注册用户
+curl -X POST $API_URL/auth/register \
+  -H "Content-Type: application/json" \
+  -d '{"email":"demo@example.com","password":"Demo123456"}'
+
+# 2. 登录获取 Token
+TOKEN=$(curl -s -X POST $API_URL/auth/login \
+  -H "Content-Type: application/json" \
+  -d '{"email":"demo@example.com","password":"Demo123456"}' \
+  | grep -o '"token":"[^"]*' | cut -d'"' -f4)
+
+echo "Token: $TOKEN"
+
+# 3. 创建测试文件
+echo "Hello Cloud Disk!" > test.txt
+
+# 4. 上传文件
+curl -X POST $API_URL/files/upload \
+  -H "Authorization: Bearer $TOKEN" \
+  -F "file=@test.txt" \
+  -F "filePath=/test.txt"
+
+# 5. 获取文件列表
+curl -s $API_URL/files \
+  -H "Authorization: Bearer $TOKEN" | jq .
+
+# 6. 提取文件 ID
+FILE_ID=$(curl -s $API_URL/files \
+  -H "Authorization: Bearer $TOKEN" \
+  | grep -o '"fileId":"[^"]*' | head -1 | cut -d'"' -f4)
+
+echo "File ID: $FILE_ID"
+
+# 7. 下载文件
+curl -X GET "$API_URL/files/$FILE_ID/download" \
+  -H "Authorization: Bearer $TOKEN" \
+  -o downloaded.txt
+
+# 8. 验证下载的文件
+cat downloaded.txt
+
+# 9. 删除文件
+curl -X DELETE "$API_URL/files/$FILE_ID" \
+  -H "Authorization: Bearer $TOKEN"
+```
+
+### 3. 测试文件去重功能
+
+```bash
+# 1. 上传第一个文件
+echo "Duplicate test" > file1.txt
+curl -X POST $API_URL/files/upload \
+  -H "Authorization: Bearer $TOKEN" \
+  -F "file=@file1.txt" \
+  -F "filePath=/file1.txt"
+
+# 2. 上传相同内容的文件（应该秒传）
+echo "Duplicate test" > file2.txt
+curl -X POST $API_URL/files/upload \
+  -H "Authorization: Bearer $TOKEN" \
+  -F "file=@file2.txt" \
+  -F "filePath=/file2.txt"
+
+# 3. 查看文件列表（两个文件应该共享同一个 S3 Key）
+curl -s $API_URL/files \
+  -H "Authorization: Bearer $TOKEN" | jq '.data[] | {name, s3Key}'
+```
+
+---
+
+## 项目架构
+
+```
+Cloud/
+├── server/              # 后端服务 (Spring Boot)
+│   ├── src/main/java/com/clouddisk/
+│   │   ├── common/      # 公共模块（安全、异常处理）
+│   │   ├── user/        # 用户模块（注册、登录）
+│   │   ├── file/        # 文件模块（上传、下载、去重）
+│   │   └── storage/     # 存储模块（S3 集成）
+│   └── pom.xml
+├── client/              # 前端界面 (HTML + JS)
+│   ├── index.html       # 单页面应用
+│   └── README.md        # 前端使用说明
+├── README.md            # 项目说明（本文件）
+├── PROGRESS.md          # 开发进度
+├── ANALYSIS.md          # 技术分析
+└── QUICKSTART.md        # 快速开始指南
+```
+
+---
+
+## 核心功能
+
+- ✅ 用户注册/登录 (JWT 认证)
+- ✅ 文件上传/下载/删除
+- ✅ 文件列表查询
+- ✅ 文件级去重（秒传）
+- ✅ 引用计数删除（智能清理 S3）
+- ✅ SHA-256 哈希计算
+- ✅ AWS S3 云存储集成
+- ✅ 现代化 Web 前端界面
+
+---
+
+## 技术栈
+
+**后端**:
+- Spring Boot 3.2.0
+- Spring Security + JWT
+- Spring Data JPA
+- H2 Database (内存)
+- AWS SDK for Java 2.x
+- Maven
+
+**前端**:
+- HTML5 + CSS3 + JavaScript
+- Fetch API
+- LocalStorage
+
+**云服务**:
+- AWS EC2 (计算)
+- AWS S3 (存储)
+
+---
+
+## 配置说明
+
+### application.yml 主要配置
+
+```yaml
+# JWT 配置
+jwt:
+  secret: ${JWT_SECRET:your-secret-key}
+  expiration: 86400000  # 24小时
+
+# AWS 配置
+aws:
+  region: ${AWS_REGION:ap-northeast-1}
+  s3:
+    bucket-name: ${S3_BUCKET_NAME}
+
+# 数据库配置
+spring:
+  datasource:
+    url: jdbc:h2:mem:testdb
+    driver-class-name: org.h2.Driver
+  jpa:
+    hibernate:
+      ddl-auto: update
+```
+
+---
+
+## 常见问题
+
+### Q: 前端显示 "网络错误: Failed to fetch"?
+A: 这是 CORS 跨域问题。解决方法:
+1. **不要直接双击打开 HTML 文件**（会使用 `file://` 协议）
+2. 使用 HTTP 服务器打开:
+   ```powershell
+   cd D:\Vs_C\Cloud\client
+   python -m http.server 3000
+   ```
+3. 在浏览器访问: http://localhost:3000
+
+### Q: 无法连接到服务器?
+A: 检查:
+1. 服务是否正常启动: `curl http://54.95.61.230:8080/health`
+2. 网络连接是否正常
+3. API_BASE_URL 配置是否正确（在 index.html 第 276 行）
+
+### Q: 文件上传失败?
+A: 检查:
+1. AWS 凭证是否配置正确
+2. S3 Bucket 是否存在
+3. 文件大小是否超过 100MB
+4. Token 是否有效（未过期）
+
+### Q: 服务重启后数据丢失?
+A: 当前使用 H2 内存数据库，重启后数据会丢失。生产环境建议使用持久化数据库（PostgreSQL/MySQL）。
+
+---
+
 group hw for 'Cloud computing system'
 
 ## 数据库结构
