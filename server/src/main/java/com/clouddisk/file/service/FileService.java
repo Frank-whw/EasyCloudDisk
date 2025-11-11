@@ -175,18 +175,93 @@ public class FileService {
     }
     
     /**
+     * 检查文件是否已存在（用于去重验证）
+     */
+    public boolean checkFileExists(UUID userId, String contentHash) {
+        log.info("检查文件是否存在，用户ID: {}, 内容哈希: {}", userId, contentHash);
+        
+        // 检查用户是否已有相同文件（基于内容哈希）
+        Optional<File> userExistingFile = fileRepository.findByUserIdAndContentHash(userId, contentHash);
+        if (userExistingFile.isPresent()) {
+            log.info("用户已有相同内容文件，文件ID: {}", userExistingFile.get().getFileId());
+            return true; // 文件已存在
+        }
+        
+        log.debug("文件不存在，可以上传 (哈希: {})", contentHash);
+        return false; // 文件不存在
+    }
+    
+    /**
+     * 通知服务端上传完成（用于S3直接上传后的通知）
+     */
+    @Transactional
+    public FileUploadResponse notifyUploadComplete(UUID userId, String contentHash, String filePath) {
+        log.info("通知上传完成，用户ID: {}, 内容哈希: {}, 文件路径: {}", userId, contentHash, filePath);
+        
+        try {
+            // 检查用户是否已有相同文件（防止重复通知）
+            Optional<File> userExistingFile = fileRepository.findByUserIdAndContentHash(userId, contentHash);
+            if (userExistingFile.isPresent()) {
+                log.info("用户已有相同内容文件，忽略通知，文件ID: {}", userExistingFile.get().getFileId());
+                return new FileUploadResponse(
+                    userExistingFile.get().getFileId(),
+                    userExistingFile.get().getName(),
+                    userExistingFile.get().getFileSize(),
+                    userExistingFile.get().getFilePath()
+                );
+            }
+            
+            // 检查系统中是否已存在相同内容的文件（跨用户去重）
+            Optional<File> globalExistingFile = fileRepository.findFirstByContentHash(contentHash);
+            String s3Key;
+            String fileName = filePath != null ? 
+                filePath.substring(filePath.lastIndexOf('/') + 1) : "uploaded_file";
+            
+            if (globalExistingFile.isPresent()) {
+                // 秒传：复用已存在的 S3 对象
+                s3Key = globalExistingFile.get().getS3Key();
+                log.info("秒传成功！复用 S3 对象: {}", s3Key);
+            } else {
+                // S3直接上传的情况，需要生成新的S3 key
+                s3Key = generateS3Key(userId, fileName);
+                log.warn("S3直接上传后通知，但未找到已存在的S3对象，生成新key: {}", s3Key);
+            }
+            
+            // 创建文件元数据记录
+            File fileEntity = new File(
+                userId,
+                fileName,
+                filePath != null ? filePath : "/",
+                s3Key,
+                globalExistingFile.map(File::getFileSize).orElse(0L), // 使用已存在文件的大小
+                contentHash
+            );
+            
+            fileEntity = fileRepository.save(fileEntity);
+            
+            log.info("文件元数据保存成功，文件ID: {}", fileEntity.getFileId());
+            
+            return new FileUploadResponse(
+                fileEntity.getFileId(),
+                fileEntity.getName(),
+                fileEntity.getFileSize(),
+                fileEntity.getFilePath()
+            );
+            
+        } catch (Exception e) {
+            log.error("通知上传完成失败", e);
+            throw new BusinessException("通知上传完成失败: " + e.getMessage());
+        }
+    }
+    
+    /**
      * 获取文件信息
      */
     public FileResponse getFileInfo(UUID userId, UUID fileId) {
         log.info("获取文件信息，用户ID: {}, 文件ID: {}", userId, fileId);
         
-        File file = fileRepository.findById(fileId)
-                .orElseThrow(() -> new RuntimeException("文件不存在"));
-        
-        // 验证文件所有权
-        if (!file.getUserId().equals(userId)) {
-            throw new RuntimeException("无权访问此文件");
-        }
+        File file = fileRepository.findByFileIdAndUserId(fileId, userId)
+                .orElseThrow(() -> new BusinessException("文件不存在", 404));
         
         return convertToFileResponse(file);
     }

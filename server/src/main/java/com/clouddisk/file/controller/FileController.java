@@ -3,6 +3,7 @@ package com.clouddisk.file.controller;
 import com.clouddisk.common.dto.ApiResponse;
 import com.clouddisk.common.dto.FileResponse;
 import com.clouddisk.common.dto.FileUploadResponse;
+import com.clouddisk.file.dto.NotifyUploadRequest;
 import com.clouddisk.file.service.FileService;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -104,6 +105,40 @@ public class FileController {
 
         fileService.deleteFile(userId, fileId);
         return ApiResponse.success("删除成功", null);
+    }
+    
+    /**
+     * 检查文件是否已存在（用于去重验证）
+     * 返回200表示文件已存在，404表示文件不存在
+     */
+    @GetMapping("/check")
+    public ResponseEntity<ApiResponse<Void>> checkFileExists(
+            @AuthenticationPrincipal String userIdPrincipal,
+            @RequestParam("contentHash") String contentHash) {
+        // 从principal中获取用户ID
+        UUID userId = UUID.fromString(userIdPrincipal);
+        
+        boolean exists = fileService.checkFileExists(userId, contentHash);
+        if (exists) {
+            return ResponseEntity.status(200).body(ApiResponse.success("文件已存在", null));
+        } else {
+            return ResponseEntity.status(404).body(ApiResponse.error("文件不存在", 404));
+        }
+    }
+    
+    /**
+     * 通知服务端上传完成（用于S3直接上传后的通知）
+     */
+    @PostMapping("/notify-upload")
+    public ApiResponse<FileUploadResponse> notifyUploadComplete(
+            @AuthenticationPrincipal String userIdPrincipal,
+            @RequestBody NotifyUploadRequest request) {
+        // 从principal中获取用户ID
+        UUID userId = UUID.fromString(userIdPrincipal);
+        
+        FileUploadResponse response = fileService.notifyUploadComplete(
+            userId, request.getContentHash(), request.getFilePath());
+        return ApiResponse.success("通知成功", response);
     }
     
     /**

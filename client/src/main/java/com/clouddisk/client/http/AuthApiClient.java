@@ -14,6 +14,7 @@ import org.apache.hc.core5.http.ContentType;
 import org.apache.hc.core5.http.ParseException;
 import org.apache.hc.core5.http.io.entity.EntityUtils;
 import org.apache.hc.core5.http.io.entity.StringEntity;
+import com.clouddisk.client.config.RetryTemplate;
 
 import java.io.IOException;
 import java.nio.charset.StandardCharsets;
@@ -38,23 +39,42 @@ public class AuthApiClient {
     }
 
     /**
-     * 用户登录
-     * @param email 邮箱
-     * @param password 密码
-     * @return JWT令牌，如果登录失败返回null
+     * 发送登录请求
      */
     public String login(String email, String password) {
-        try {
-            AuthRequest request = new AuthRequest(email, password);
-            AuthResponse response = sendAuthRequest("/auth/login", request);
-            return response.getToken();
-        } catch (IOException | ParseException e) {
-            System.out.println("登录请求失败: " + e.getMessage());
-            return null;
-        } catch (RuntimeException e) {
-            System.out.println("登录失败: " + e.getMessage());
-            return null;
-        }
+        return RetryTemplate.executeWithRetry(() -> {
+            try {
+                AuthRequest request = new AuthRequest(email, password);
+                
+                String json = objectMapper.writeValueAsString(request);
+                StringEntity entity = new StringEntity(json, ContentType.APPLICATION_JSON);
+                
+                HttpPost httpPost = new HttpPost(baseUrl + "/api/auth/login");
+                httpPost.setEntity(entity);
+                
+                try (CloseableHttpResponse response = httpClient.execute(httpPost)) {
+                    int statusCode = response.getCode();
+                    String responseBody = EntityUtils.toString(response.getEntity());
+                    
+                    if (statusCode == 200) {
+                        AuthResponse authResponse = objectMapper.readValue(responseBody, AuthResponse.class);
+                        if (authResponse.getToken() != null) {
+                            log.info("用户 {} 登录成功", email);
+                            return authResponse.getToken();
+                        } else {
+                            log.error("登录响应中没有token");
+                            return null;
+                        }
+                    } else {
+                        log.error("登录失败，状态码: {}, 响应: {}", statusCode, responseBody);
+                        throw new RuntimeException("登录失败: " + responseBody);
+                    }
+                }
+            } catch (Exception e) {
+                log.error("登录请求失败", e);
+                throw new RuntimeException("登录请求失败: " + e.getMessage(), e);
+            }
+        }, 3); // 重试3次
     }
 
     /**

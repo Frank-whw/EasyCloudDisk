@@ -34,10 +34,7 @@ public class ClientProperties {
     private Integer httpConnTimeoutMs = 10_000;
     private Integer httpReadTimeoutMs = 60_000;
 
-    // S3 凭据（可选）
-    private String s3AccessKeyId;
-    private String s3SecretAccessKey;
-    private String s3SessionToken; // 若使用临时凭据（如STS），可选
+    // S3 凭据已移除 - 使用默认凭证链（环境变量、IAM角色等）
 
     @PostConstruct
     public void validate() {

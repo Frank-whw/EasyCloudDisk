@@ -215,27 +215,41 @@ public class SyncManager {
             request.setCompressedPayload(compressedPayload);
             request.setContentHash(contentHash);
             
-            // 异步上传文件
+            // 异步上传文件 - 先验证去重，再决定上传方式
             executorService.submit(() -> {
                 try {
-                    log.info("开始上传文件到S3: {}", filePath);
-                    boolean success = s3Service.uploadFile(request);
-                    if (success) {
-                        log.info("文件上传到S3完成: {}", filePath);
-                    } else {
-                        log.error("文件上传到S3失败: {}", filePath);
-                        
-                        // 如果S3上传失败，回退到原来的API方式
-                        log.info("尝试使用API方式上传文件: {}", filePath);
-                        boolean apiSuccess = fileApiClient.uploadFile(request);
-                        if (apiSuccess) {
-                            log.info("文件通过API上传完成: {}", filePath);
-                        } else {
-                            log.error("文件通过API上传失败: {}", filePath);
+                    log.info("开始上传文件: {} (哈希: {})", filePath, contentHash);
+                    
+                    // 步骤1: 先调用服务端API检查是否已存在（去重验证）
+                    boolean shouldUpload = fileApiClient.checkFileExists(contentHash);
+                    if (!shouldUpload) {
+                        log.info("文件已存在，跳过上传: {} (哈希: {})", filePath, contentHash);
+                        return;
+                    }
+                    
+                    // 步骤2: 如果启用S3直接上传，先尝试S3
+                    if (s3Service != null) {
+                        log.info("尝试S3直接上传: {}", filePath);
+                        boolean s3Success = s3Service.uploadFile(request);
+                        if (s3Success) {
+                            log.info("S3直接上传成功: {}", filePath);
+                            // 通知服务端上传完成
+                            fileApiClient.notifyUploadComplete(contentHash, filePath.toString());
+                            return;
                         }
                     }
+                    
+                    // 步骤3: S3上传失败或禁用时，使用API上传
+                    log.info("使用API上传文件: {}", filePath);
+                    boolean apiSuccess = fileApiClient.uploadFile(request);
+                    if (apiSuccess) {
+                        log.info("API上传成功: {}", filePath);
+                    } else {
+                        log.error("API上传失败: {}", filePath);
+                    }
+                    
                 } catch (Exception e) {
-                    log.error("文件上传到S3失败: {}", filePath, e);
+                    log.error("文件上传失败: {}", filePath, e);
                 }
             });
             

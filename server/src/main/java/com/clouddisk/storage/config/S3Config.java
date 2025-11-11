@@ -7,6 +7,7 @@ import software.amazon.awssdk.auth.credentials.AwsBasicCredentials;
 import software.amazon.awssdk.auth.credentials.DefaultCredentialsProvider;
 import software.amazon.awssdk.auth.credentials.StaticCredentialsProvider;
 import software.amazon.awssdk.core.retry.RetryPolicy;
+import software.amazon.awssdk.core.retry.backoff.EqualJitterBackoffStrategy;
 import software.amazon.awssdk.http.apache.ApacheHttpClient;
 import software.amazon.awssdk.http.apache.ProxyConfiguration;
 import software.amazon.awssdk.regions.Region;
@@ -20,11 +21,7 @@ import java.time.Duration;
 @Configuration
 public class S3Config {
     
-    @Value("${aws.access-key-id:}")
-    private String accessKeyId;
-    
-    @Value("${aws.secret-access-key:}")
-    private String secretAccessKey;
+    // S3凭证已移除 - 使用默认凭证链（环境变量、IAM角色等）
     
     @Value("${aws.region}")
     private String region;
@@ -44,6 +41,9 @@ public class S3Config {
     @Value("${aws.http.read-timeout-ms:60000}")
     private int readTimeoutMs;
     
+    @Value("${aws.s3.multipart.max-retries:3}")
+    private int maxRetries;
+    
     @Bean
     public S3Client s3Client() {
         // 配置 HTTP 客户端：连接池、超时等
@@ -55,24 +55,27 @@ public class S3Config {
         // 可选：支持代理（如果环境需要，保持默认关闭）
         httpClientBuilder.proxyConfiguration(ProxyConfiguration.builder().build());
 
+        // 配置重试策略：指数退避，最大重试次数
+        EqualJitterBackoffStrategy backoffStrategy = EqualJitterBackoffStrategy.builder()
+                .baseDelay(Duration.ofMillis(100))
+                .maxBackoffTime(Duration.ofSeconds(30))
+                .build();
+                
+        RetryPolicy retryPolicy = RetryPolicy.builder()
+                .numRetries(maxRetries)
+                .backoffStrategy(backoffStrategy)
+                .build();
+
         S3ClientBuilder builder = S3Client.builder()
                 .region(Region.of(region))
                 .serviceConfiguration(S3Configuration.builder()
                         .pathStyleAccessEnabled(pathStyleAccess)
                         .build())
                 .httpClientBuilder(httpClientBuilder)
-                .overrideConfiguration(cfg -> cfg.retryPolicy(RetryPolicy.defaultRetryPolicy()));
+                .overrideConfiguration(cfg -> cfg.retryPolicy(retryPolicy));
         
-        // 如果显式配置了访问密钥，则使用静态凭证
-        if (accessKeyId != null && !accessKeyId.isEmpty() 
-                && secretAccessKey != null && !secretAccessKey.isEmpty()) {
-            AwsBasicCredentials awsCredentials = AwsBasicCredentials.create(
-                    accessKeyId, secretAccessKey);
-            builder.credentialsProvider(StaticCredentialsProvider.create(awsCredentials));
-        } else {
-            // 否则使用默认凭证链（从环境变量、~/.aws/credentials、EC2实例角色等读取）
-            builder.credentialsProvider(DefaultCredentialsProvider.create());
-        }
+            // 使用默认凭证链 - 简化配置，支持环境变量、IAM角色等
+        builder.credentialsProvider(DefaultCredentialsProvider.create());
         
         // 如果有自定义endpoint（如MinIO、Ceph 等兼容服务），则设置 endpoint
         if (endpoint != null && !endpoint.isEmpty()) {

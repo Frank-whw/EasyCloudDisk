@@ -2,6 +2,7 @@ package com.clouddisk.client.service;
 
 import com.clouddisk.client.model.FileUploadRequest;
 import com.clouddisk.client.config.ClientProperties;
+import com.clouddisk.client.config.RetryTemplate;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 import software.amazon.awssdk.auth.credentials.DefaultCredentialsProvider;
@@ -71,15 +72,8 @@ public class S3Service {
                 .httpClientBuilder(httpClientBuilder)
                 .overrideConfiguration(cfg -> cfg.retryPolicy(RetryPolicy.defaultRetryPolicy()));
 
-        // 选择凭据提供方式：优先使用 application.yml 中的配置，其次读取默认环境/系统凭据
-        if (clientProperties.getS3AccessKeyId() != null && !clientProperties.getS3AccessKeyId().isBlank()
-                && clientProperties.getS3SecretAccessKey() != null && !clientProperties.getS3SecretAccessKey().isBlank()) {
-            AwsBasicCredentials creds = AwsBasicCredentials.create(
-                    clientProperties.getS3AccessKeyId(), clientProperties.getS3SecretAccessKey());
-            builder.credentialsProvider(StaticCredentialsProvider.create(creds));
-        } else {
-            builder.credentialsProvider(DefaultCredentialsProvider.create());
-        }
+        // 使用默认凭证链 - 简化配置，支持环境变量、IAM角色等
+        builder.credentialsProvider(DefaultCredentialsProvider.create());
 
         if (clientProperties.getS3Endpoint() != null && !clientProperties.getS3Endpoint().isBlank()) {
             builder.endpointOverride(URI.create(clientProperties.getS3Endpoint()));
@@ -95,98 +89,99 @@ public class S3Service {
      * @return 上传是否成功
      */
     public boolean uploadFile(FileUploadRequest request) {
-        try {
-            if (request.getCompressedPayload() == null || request.getCompressedPayload().length == 0) {
-                log.warn("上传负载为空，跳过: {}", request.getFilePath());
-                return false;
-            }
+        return RetryTemplate.executeWithRetry(() -> {
+            try {
+                if (request.getCompressedPayload() == null || request.getCompressedPayload().length == 0) {
+                    log.warn("上传负载为空，跳过: {}", request.getFilePath());
+                    return false;
+                }
 
-            String key = generateS3Key(request);
-            long contentLength = request.getCompressedPayload().length;
+                String key = generateS3Key(request);
+                long contentLength = request.getCompressedPayload().length;
 
-            // 小文件：单次上传
-            if (contentLength <= partSizeBytes) {
-                PutObjectRequest putObjectRequest = PutObjectRequest.builder()
+                // 小文件：单次上传
+                if (contentLength <= partSizeBytes) {
+                    PutObjectRequest putObjectRequest = PutObjectRequest.builder()
+                            .bucket(bucketName)
+                            .key(key)
+                            .contentLength(contentLength)
+                            .contentType("application/zip")
+                            .build();
+
+                    s3Client.putObject(putObjectRequest, RequestBody.fromBytes(request.getCompressedPayload()));
+                    log.info("文件上传到S3成功: bucket={}, key={} (单次)", bucketName, key);
+                    return true;
+                }
+
+                // 大文件：分片上传
+                CreateMultipartUploadRequest createReq = CreateMultipartUploadRequest.builder()
                         .bucket(bucketName)
                         .key(key)
-                        .contentLength(contentLength)
                         .contentType("application/zip")
                         .build();
+                CreateMultipartUploadResponse createRes = s3Client.createMultipartUpload(createReq);
+                String uploadId = createRes.uploadId();
+                List<CompletedPart> parts = new ArrayList<>();
+                int partNumber = 1;
+                long uploaded = 0L;
 
-                s3Client.putObject(putObjectRequest, RequestBody.fromBytes(request.getCompressedPayload()));
-                log.info("文件上传到S3成功: bucket={}, key={} (单次)", bucketName, key);
-                return true;
-            }
+                byte[] payload = request.getCompressedPayload();
+                for (int offset = 0; offset < payload.length; offset += partSizeBytes) {
+                    int size = (int) Math.min(partSizeBytes, payload.length - offset);
+                    UploadPartRequest partReq = UploadPartRequest.builder()
+                            .bucket(bucketName)
+                            .key(key)
+                            .uploadId(uploadId)
+                            .partNumber(partNumber)
+                            .contentLength((long) size)
+                            .build();
 
-            // 大文件：分片上传
-            CreateMultipartUploadRequest createReq = CreateMultipartUploadRequest.builder()
-                    .bucket(bucketName)
-                    .key(key)
-                    .contentType("application/zip")
-                    .build();
-            CreateMultipartUploadResponse createRes = s3Client.createMultipartUpload(createReq);
-            String uploadId = createRes.uploadId();
-            List<CompletedPart> parts = new ArrayList<>();
-            int partNumber = 1;
-            long uploaded = 0L;
+                    String eTag = null;
+                    for (int attempt = 1; attempt <= maxRetries; attempt++) {
+                        try {
+                            UploadPartResponse partRes = s3Client.uploadPart(partReq,
+                                    RequestBody.fromBytes(slice(payload, offset, size)));
+                            eTag = partRes.eTag();
+                            break;
+                        } catch (S3Exception ex) {
+                            log.warn("分片上传失败，part={} attempt={}/{}: {}", partNumber, attempt, maxRetries, ex.getMessage());
+                            if (attempt == maxRetries) {
+                                // 终止上传
+                                try {
+                                    s3Client.abortMultipartUpload(AbortMultipartUploadRequest.builder()
+                                            .bucket(bucketName)
+                                            .key(key)
+                                            .uploadId(uploadId)
+                                            .build());
+                                } catch (Exception abortEx) {
+                                    log.warn("中止分片上传失败: {}", abortEx.getMessage());
+                                }
+                                throw ex;
+                            }
+                        }
+                    }
 
-            byte[] payload = request.getCompressedPayload();
-            for (int offset = 0; offset < payload.length; offset += partSizeBytes) {
-                int size = (int) Math.min(partSizeBytes, payload.length - offset);
-                UploadPartRequest partReq = UploadPartRequest.builder()
+                    parts.add(CompletedPart.builder().partNumber(partNumber).eTag(eTag).build());
+                    uploaded += size;
+                    double percent = uploaded * 100.0 / contentLength;
+                    log.info("上传进度: {} / {} bytes ({:.2f}%)", uploaded, contentLength, percent);
+                    partNumber++;
+                }
+
+                CompletedMultipartUpload cmp = CompletedMultipartUpload.builder().parts(parts).build();
+                s3Client.completeMultipartUpload(CompleteMultipartUploadRequest.builder()
                         .bucket(bucketName)
                         .key(key)
                         .uploadId(uploadId)
-                        .partNumber(partNumber)
-                        .contentLength((long) size)
-                        .build();
-
-                String eTag = null;
-                for (int attempt = 1; attempt <= maxRetries; attempt++) {
-                    try {
-                        UploadPartResponse partRes = s3Client.uploadPart(partReq,
-                                RequestBody.fromBytes(slice(payload, offset, size)));
-                        eTag = partRes.eTag();
-                        break;
-                    } catch (S3Exception ex) {
-                        log.warn("分片上传失败，part={} attempt={}/{}: {}", partNumber, attempt, maxRetries, ex.getMessage());
-                        if (attempt == maxRetries) {
-                            // 终止上传
-                            try {
-                                s3Client.abortMultipartUpload(AbortMultipartUploadRequest.builder()
-                                        .bucket(bucketName)
-                                        .key(key)
-                                        .uploadId(uploadId)
-                                        .build());
-                            } catch (Exception abortEx) {
-                                log.warn("中止分片上传失败: {}", abortEx.getMessage());
-                            }
-                            throw ex;
-                        }
-                    }
-                }
-
-                parts.add(CompletedPart.builder().partNumber(partNumber).eTag(eTag).build());
-                uploaded += size;
-                double percent = uploaded * 100.0 / contentLength;
-                log.info("上传进度: {} / {} bytes ({:.2f}%)", uploaded, contentLength, percent);
-                partNumber++;
+                        .multipartUpload(cmp)
+                        .build());
+                log.info("文件上传到S3成功: bucket={}, key={} (分片)", bucketName, key);
+                return true;
+            } catch (Exception e) {
+                log.error("上传文件到S3失败", e);
+                throw new RuntimeException("S3上传失败", e);
             }
-
-            CompletedMultipartUpload cmp = CompletedMultipartUpload.builder().parts(parts).build();
-            s3Client.completeMultipartUpload(CompleteMultipartUploadRequest.builder()
-                    .bucket(bucketName)
-                    .key(key)
-                    .uploadId(uploadId)
-                    .multipartUpload(cmp)
-                    .build());
-            log.info("文件上传到S3成功: bucket={}, key={} (分片)", bucketName, key);
-            return true;
-        } catch (Exception e) {
-            log.error("上传文件到S3失败", e);
-            return false;
-        }
-    }
+        }, 3); // 最多重试3次
     
     /**
      * 从S3下载文件
@@ -195,24 +190,26 @@ public class S3Service {
      * @return 下载是否成功
      */
     public boolean downloadFile(String key, Path target) {
-        try {
-            GetObjectRequest getObjectRequest = GetObjectRequest.builder()
-                    .bucket(bucketName)
-                    .key(key)
-                    .build();
-            
-            ResponseInputStream<GetObjectResponse> inputStream = s3Client.getObject(getObjectRequest);
-            
-            // 将文件写入目标路径
-            Files.write(target, inputStream.readAllBytes(), StandardOpenOption.CREATE, 
-                    StandardOpenOption.TRUNCATE_EXISTING);
-            
-            log.info("从S3下载文件成功: bucket={}, key={}, target={}", bucketName, key, target);
-            return true;
-        } catch (Exception e) {
-            log.error("从S3下载文件失败: key={}", key, e);
-            return false;
-        }
+        return RetryTemplate.executeWithRetry(() -> {
+            try {
+                GetObjectRequest getObjectRequest = GetObjectRequest.builder()
+                        .bucket(bucketName)
+                        .key(key)
+                        .build();
+                
+                ResponseInputStream<GetObjectResponse> inputStream = s3Client.getObject(getObjectRequest);
+                
+                // 将文件写入目标路径
+                Files.write(target, inputStream.readAllBytes(), StandardOpenOption.CREATE, 
+                        StandardOpenOption.TRUNCATE_EXISTING);
+                
+                log.info("从S3下载文件成功: bucket={}, key={}, target={}", bucketName, key, target);
+                return true;
+            } catch (Exception e) {
+                log.error("从S3下载文件失败: key={}", key, e);
+                throw new RuntimeException("S3下载失败", e);
+            }
+        }, 3); // 最多重试3次
     }
     
     /**
@@ -221,20 +218,22 @@ public class S3Service {
      * @return 删除是否成功
      */
     public boolean deleteFile(String key) {
-        try {
-            DeleteObjectRequest deleteObjectRequest = DeleteObjectRequest.builder()
-                    .bucket(BUCKET_NAME)
-                    .key(key)
-                    .build();
-            
-            s3Client.deleteObject(deleteObjectRequest);
-            
-            log.info("从S3删除文件成功: bucket={}, key={}", BUCKET_NAME, key);
-            return true;
-        } catch (Exception e) {
-            log.error("从S3删除文件失败: key={}", key, e);
-            return false;
-        }
+        return RetryTemplate.executeWithRetry(() -> {
+            try {
+                DeleteObjectRequest deleteObjectRequest = DeleteObjectRequest.builder()
+                        .bucket(bucketName)
+                        .key(key)
+                        .build();
+                
+                s3Client.deleteObject(deleteObjectRequest);
+                
+                log.info("从S3删除文件成功: bucket={}, key={}", bucketName, key);
+                return true;
+            } catch (Exception e) {
+                log.error("从S3删除文件失败: key={}", key, e);
+                throw new RuntimeException("S3删除失败", e);
+            }
+        }, 3); // 最多重试3次
     }
     
     /**
@@ -242,34 +241,43 @@ public class S3Service {
      * @return 文件键列表
      */
     public List<String> listFiles() {
-        try {
-            ListObjectsV2Request listRequest = ListObjectsV2Request.builder()
-                    .bucket(bucketName)
-                    .build();
-            
-            ListObjectsV2Response listResponse = s3Client.listObjectsV2(listRequest);
-            
-            List<String> keys = new ArrayList<>();
-            for (S3Object s3Object : listResponse.contents()) {
-                keys.add(s3Object.key());
+        return RetryTemplate.executeWithRetry(() -> {
+            try {
+                ListObjectsV2Request listRequest = ListObjectsV2Request.builder()
+                        .bucket(bucketName)
+                        .build();
+                
+                ListObjectsV2Response listResponse = s3Client.listObjectsV2(listRequest);
+                
+                List<String> keys = new ArrayList<>();
+                for (S3Object s3Object : listResponse.contents()) {
+                    keys.add(s3Object.key());
+                }
+                
+                log.debug("从S3获取文件列表成功，共{}个文件", keys.size());
+                return keys;
+            } catch (Exception e) {
+                log.error("从S3获取文件列表失败", e);
+                throw new RuntimeException("S3列出文件失败", e);
             }
-            
-            log.debug("从S3获取文件列表成功，共{}个文件", keys.size());
-            return keys;
-        } catch (Exception e) {
-            log.error("从S3获取文件列表失败", e);
-            return new ArrayList<>();
-        }
+        }, 3); // 最多重试3次
     }
     
     /**
-     * 生成S3对象键
+     * 生成S3对象的key（基于内容哈希，确保唯一性）
      * @param request 文件上传请求
-     * @return S3对象键
+     * @return S3 key
      */
     private String generateS3Key(FileUploadRequest request) {
-        // 使用文件路径作为S3键，可以根据需要进行调整
-        return request.getFilePath().substring(request.getFilePath().lastIndexOf("/") + 1);
+        String contentHash = request.getContentHash();
+        String fileName = request.getLocalPath().getFileName().toString();
+        String extension = "";
+        int dotIndex = fileName.lastIndexOf('.');
+        if (dotIndex > 0) {
+            extension = fileName.substring(dotIndex);
+        }
+        // 使用内容哈希作为S3 key，确保相同内容有相同的key
+        return "files/" + contentHash + extension;
     }
 
     private static byte[] slice(byte[] data, int offset, int size) {
