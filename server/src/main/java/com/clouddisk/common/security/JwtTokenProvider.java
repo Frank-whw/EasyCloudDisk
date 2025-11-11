@@ -2,6 +2,7 @@ package com.clouddisk.common.security;
 
 
 import io.jsonwebtoken.Claims;
+import io.jsonwebtoken.JwtException;
 import io.jsonwebtoken.Jwts;
 import io.jsonwebtoken.security.Keys;
 import jakarta.servlet.http.HttpServletRequest;
@@ -22,7 +23,21 @@ public class JwtTokenProvider {
     // 从配置文件中获取密钥和过期时间
     public JwtTokenProvider(@Value("${jwt.secret}") String jwtSecret,
                             @Value("${jwt.expiration}") long jwtExpiration) {
-        this.secretKey = Keys.hmacShaKeyFor(jwtSecret.getBytes());
+        if (jwtSecret == null || jwtSecret.trim().isEmpty()) {
+            throw new IllegalStateException("JWT密钥未配置");
+        }
+        // 基本强度校验：至少32字节，避免占位符/弱密钥
+        if (jwtSecret.length() < 32 || jwtSecret.toLowerCase().startsWith("your-secret")) {
+            throw new IllegalStateException("JWT密钥强度不足，请使用至少256位随机密钥");
+        }
+        try {
+            this.secretKey = Keys.hmacShaKeyFor(jwtSecret.getBytes());
+        } catch (IllegalArgumentException e) {
+            throw new IllegalStateException("JWT密钥无效或长度不足: " + e.getMessage());
+        }
+        if (jwtExpiration <= 0) {
+            throw new IllegalStateException("JWT过期时间必须为正数");
+        }
         this.jwtExpiration = jwtExpiration;
     }
     /**
@@ -60,9 +75,12 @@ public class JwtTokenProvider {
     public boolean validateToken(String token) {
         try {
             return getClaimsFromToken(token) != null && !isTokenExpired(token);
-        } catch (Exception e) {
+        } catch (JwtException e) {
             // 记录具体的验证失败原因
             System.err.println("JWT验证失败: " + e.getMessage());
+            return false;
+        } catch (Exception e) {
+            System.err.println("JWT验证发生未知错误: " + e.getMessage());
             return false;
         }
     }
@@ -100,8 +118,11 @@ public class JwtTokenProvider {
                     .build()
                     .parseSignedClaims(token)
                     .getPayload();
-        } catch (Exception e) {
+        } catch (JwtException e) {
             System.err.println("JWT解析失败: " + e.getMessage());
+            return null;
+        } catch (Exception e) {
+            System.err.println("JWT解析发生未知错误: " + e.getMessage());
             return null;
         }
     }

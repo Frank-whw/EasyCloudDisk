@@ -29,6 +29,7 @@ public class FileService {
     
     private final FileRepository fileRepository;
     private final S3Service s3Service;
+    private static final long MAX_UPLOAD_SIZE_BYTES = 100L * 1024 * 1024; // 100MB 与 application.yml 保持一致
     
     /**
      * 获取用户的所有文件列表
@@ -49,13 +50,18 @@ public class FileService {
         log.info("上传文件，用户ID: {}, 文件名: {}, 路径: {}", userId, file.getOriginalFilename(), filePath);
         
         try {
+            // 服务端大小校验（避免绕过控制器限制）
+            long size = file.getSize();
+            if (size <= 0 || size > MAX_UPLOAD_SIZE_BYTES) {
+                throw new BusinessException("文件大小非法或超过限制", 413);
+            }
             // 使用客户端提供的内容哈希（如果有），否则计算
             String contentHash = contentHashOpt != null && !contentHashOpt.isEmpty()
                     ? contentHashOpt
                     : calculateFileHash(file);
             
-            String fileName = file.getOriginalFilename();
-            String normalizedPath = filePath != null ? filePath : "/";
+            String fileName = sanitizeFileName(file.getOriginalFilename());
+            String normalizedPath = normalizePath(filePath);
             
             // 检查用户是否已有相同文件（基于内容哈希）- 防止重复上传
             Optional<File> userExistingFile = fileRepository.findByUserIdAndContentHash(userId, contentHash);
@@ -114,11 +120,11 @@ public class FileService {
         log.info("删除文件，用户ID: {}, 文件ID: {}", userId, fileId);
         
         File file = fileRepository.findById(fileId)
-                .orElseThrow(() -> new RuntimeException("文件不存在"));
+                .orElseThrow(() -> new BusinessException("文件不存在", 404));
         
         // 验证文件所有权
         if (!file.getUserId().equals(userId)) {
-            throw new RuntimeException("无权删除此文件");
+            throw new BusinessException("无权删除此文件", 403);
         }
         
         String s3Key = file.getS3Key();
@@ -147,11 +153,11 @@ public class FileService {
         log.info("下载文件，用户ID: {}, 文件ID: {}", userId, fileId);
         
         File file = fileRepository.findById(fileId)
-                .orElseThrow(() -> new RuntimeException("文件不存在"));
+                .orElseThrow(() -> new BusinessException("文件不存在", 404));
         
         // 验证文件所有权
         if (!file.getUserId().equals(userId)) {
-            throw new RuntimeException("无权访问此文件");
+            throw new BusinessException("无权访问此文件", 403);
         }
         
         return s3Service.downloadFile(file.getS3Key());
@@ -164,11 +170,11 @@ public class FileService {
         log.info("以流式方式打开文件，用户ID: {}, 文件ID: {}", userId, fileId);
 
         File file = fileRepository.findById(fileId)
-                .orElseThrow(() -> new RuntimeException("文件不存在"));
+                .orElseThrow(() -> new BusinessException("文件不存在", 404));
 
         // 验证文件所有权
         if (!file.getUserId().equals(userId)) {
-            throw new RuntimeException("无权访问此文件");
+            throw new BusinessException("无权访问此文件", 403);
         }
 
         return s3Service.downloadFileStream(file.getS3Key());
@@ -195,10 +201,13 @@ public class FileService {
      * 通知服务端上传完成（用于S3直接上传后的通知）
      */
     @Transactional
-    public FileUploadResponse notifyUploadComplete(UUID userId, String contentHash, String filePath) {
+    public FileUploadResponse notifyUploadComplete(UUID userId, String contentHash, String filePath, Long fileSizeOpt) {
         log.info("通知上传完成，用户ID: {}, 内容哈希: {}, 文件路径: {}", userId, contentHash, filePath);
         
         try {
+            if (fileSizeOpt != null && (fileSizeOpt <= 0 || fileSizeOpt > 100L * 1024 * 1024)) {
+                throw new BusinessException("文件大小非法或超过限制", 413);
+            }
             // 检查用户是否已有相同文件（防止重复通知）
             Optional<File> userExistingFile = fileRepository.findByUserIdAndContentHash(userId, contentHash);
             if (userExistingFile.isPresent()) {
@@ -214,8 +223,9 @@ public class FileService {
             // 检查系统中是否已存在相同内容的文件（跨用户去重）
             Optional<File> globalExistingFile = fileRepository.findFirstByContentHash(contentHash);
             String s3Key;
-            String fileName = filePath != null ? 
-                filePath.substring(filePath.lastIndexOf('/') + 1) : "uploaded_file";
+            String normalizedPath = normalizePath(filePath);
+            String fileName = normalizedPath.substring(normalizedPath.lastIndexOf('/') + 1);
+            fileName = sanitizeFileName(fileName);
             
             if (globalExistingFile.isPresent()) {
                 // 秒传：复用已存在的 S3 对象
@@ -228,12 +238,13 @@ public class FileService {
             }
             
             // 创建文件元数据记录
+            long finalSize = globalExistingFile.map(File::getFileSize).orElse(fileSizeOpt != null ? fileSizeOpt : 0L);
             File fileEntity = new File(
                 userId,
                 fileName,
-                filePath != null ? filePath : "/",
+                normalizedPath,
                 s3Key,
-                globalExistingFile.map(File::getFileSize).orElse(0L), // 使用已存在文件的大小
+                finalSize,
                 contentHash
             );
             
@@ -313,5 +324,76 @@ public class FileService {
             sb.append(String.format("%02x", b));
         }
         return sb.toString();
+    }
+
+    /**
+     * 规范化文件路径，防止路径遍历
+     * 将分隔符统一为'/'，移除'.'段，安全处理'..'段，确保根相对路径
+     */
+    private String normalizePath(String rawPath) {
+        if (rawPath == null || rawPath.trim().isEmpty()) {
+            return "/";
+        }
+        String path = rawPath.replace('\\', '/');
+        String[] parts = path.split("/");
+        java.util.Deque<String> stack = new java.util.ArrayDeque<>();
+        for (String part : parts) {
+            if (part == null || part.isEmpty() || ".".equals(part)) {
+                continue;
+            }
+            if ("..".equals(part)) {
+                // 防止越过根路径
+                if (!stack.isEmpty()) {
+                    stack.pollLast();
+                }
+                continue;
+            }
+            // 仅保留安全字符，避免注入奇异字符
+            String safe = part.replaceAll("[^a-zA-Z0-9._-]", "_");
+            if (!safe.isEmpty()) {
+                stack.addLast(safe);
+            }
+        }
+        StringBuilder normalized = new StringBuilder("/");
+        java.util.Iterator<String> it = stack.iterator();
+        while (it.hasNext()) {
+            normalized.append(it.next());
+            if (it.hasNext()) normalized.append('/');
+        }
+        String result = normalized.toString();
+        // 限制最大长度，避免异常超长路径
+        if (result.length() > 1024) {
+            result = result.substring(0, 1024);
+        }
+        return result;
+    }
+
+    /**
+     * 清理文件名，保留常见安全字符并限制长度
+     */
+    private String sanitizeFileName(String name) {
+        if (name == null || name.trim().isEmpty()) {
+            return "unnamed";
+        }
+        String cleaned = name.trim().replace('\\', '/');
+        // 仅保留文件名部分，去掉可能的路径
+        int idx = cleaned.lastIndexOf('/');
+        if (idx >= 0) {
+            cleaned = cleaned.substring(idx + 1);
+        }
+        // 替换不安全字符
+        cleaned = cleaned.replaceAll("[^a-zA-Z0-9._-]", "_");
+        // 避免以点开头（隐藏文件）影响显示
+        if (cleaned.startsWith(".")) {
+            cleaned = cleaned.substring(1);
+        }
+        if (cleaned.isEmpty()) {
+            cleaned = "unnamed";
+        }
+        // 最长255字符
+        if (cleaned.length() > 255) {
+            cleaned = cleaned.substring(0, 255);
+        }
+        return cleaned;
     }
 }

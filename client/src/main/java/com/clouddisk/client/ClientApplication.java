@@ -419,16 +419,79 @@ public class ClientApplication implements CommandLineRunner {
      * 下载文件
      */
     private void downloadFile(String filename) {
-        // TODO: 实现文件下载功能
-        System.out.println("文件下载功能待实现");
+        try {
+            // 从服务器列表查找目标文件
+            List<com.clouddisk.client.model.FileResponse> files = context.getFileApiClient().listFiles();
+            if (files == null || files.isEmpty()) {
+                System.out.println("云盘中还没有文件");
+                return;
+            }
+
+            com.clouddisk.client.model.FileResponse target = null;
+            for (com.clouddisk.client.model.FileResponse f : files) {
+                if (f.getName() != null && f.getName().equals(filename)) {
+                    target = f;
+                    break;
+                }
+            }
+
+            if (target == null) {
+                System.out.println("未找到文件: " + filename);
+                return;
+            }
+
+            // 构造目标保存路径（保存到同步目录）
+            Path targetPath = Paths.get(context.getConfig().getSyncDir(), filename);
+
+            // 调用下载接口
+            boolean ok = context.getFileApiClient().downloadFile(
+                target.getFileId().toString(), targetPath);
+            if (ok) {
+                System.out.println("下载成功: " + targetPath.toAbsolutePath());
+            } else {
+                System.out.println("下载失败: " + filename);
+            }
+        } catch (Exception e) {
+            log.error("下载文件失败: {}", filename, e);
+            System.out.println("下载文件失败: " + e.getMessage());
+        }
     }
 
     /**
      * 删除文件
      */
     private void deleteFile(String filename) {
-        // TODO: 实现文件删除功能
-        System.out.println("文件删除功能待实现");
+        try {
+            // 从服务器列表查找目标文件
+            List<com.clouddisk.client.model.FileResponse> files = context.getFileApiClient().listFiles();
+            if (files == null || files.isEmpty()) {
+                System.out.println("云盘中还没有文件");
+                return;
+            }
+
+            com.clouddisk.client.model.FileResponse target = null;
+            for (com.clouddisk.client.model.FileResponse f : files) {
+                if (f.getName() != null && f.getName().equals(filename)) {
+                    target = f;
+                    break;
+                }
+            }
+
+            if (target == null) {
+                System.out.println("未找到文件: " + filename);
+                return;
+            }
+
+            boolean ok = context.getFileApiClient().deleteFile(target.getFileId().toString());
+            if (ok) {
+                System.out.println("删除成功: " + filename);
+            } else {
+                System.out.println("删除失败: " + filename);
+            }
+        } catch (Exception e) {
+            log.error("删除文件失败: {}", filename, e);
+            System.out.println("删除文件失败: " + e.getMessage());
+        }
     }
 
     /**

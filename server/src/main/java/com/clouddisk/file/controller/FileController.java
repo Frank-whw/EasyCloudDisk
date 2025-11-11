@@ -137,7 +137,7 @@ public class FileController {
         UUID userId = UUID.fromString(userIdPrincipal);
         
         FileUploadResponse response = fileService.notifyUploadComplete(
-            userId, request.getContentHash(), request.getFilePath());
+            userId, request.getContentHash(), request.getFilePath(), request.getFileSize());
         return ApiResponse.success("通知成功", response);
     }
     

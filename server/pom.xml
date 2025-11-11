@@ -73,6 +73,12 @@
             <artifactId>s3</artifactId>
             <version>${aws-sdk.version}</version>
         </dependency>
+        <!-- AWS SDK Apache HTTP Client (S3Config 需要) -->
+        <dependency>
+            <groupId>software.amazon.awssdk</groupId>
+            <artifactId>apache-client</artifactId>
+            <version>${aws-sdk.version}</version>
+        </dependency>
 
         <!-- JWT -->
         <dependency>

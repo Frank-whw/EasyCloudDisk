@@ -6,12 +6,15 @@ import org.springframework.stereotype.Component;
 
 import jakarta.annotation.PostConstruct;
 import java.io.File;
+import java.net.URI;
+import java.net.URISyntaxException;
 
 @Data
 @Component
 @ConfigurationProperties(prefix = "client")
 public class ClientProperties {
-    private String serverUrl = "http://ec2-54-95-61-230.ap-northeast-1.compute.amazonaws.com:8080";
+    // 服务器URL从配置/环境变量读取，避免硬编码
+    private String serverUrl;
     private String syncDir = "./local"; // 同步目录
     private String compressStrategy = "zip"; // 可选：zip、tar
     private Boolean enableAutoSync = true;
@@ -42,6 +45,18 @@ public class ClientProperties {
         if (serverUrl == null || serverUrl.trim().isEmpty()) {
             throw new IllegalArgumentException("服务器URL不能为空");
         }
+
+        // 服务器URL基本校验，仅允许 http/https
+        String trimmedUrl = serverUrl.trim();
+        try {
+            URI uri = new URI(trimmedUrl);
+            String scheme = uri.getScheme();
+            if (scheme == null || !(scheme.equalsIgnoreCase("http") || scheme.equalsIgnoreCase("https"))) {
+                throw new IllegalArgumentException("服务器URL必须以 http 或 https 开头: " + trimmedUrl);
+            }
+        } catch (URISyntaxException e) {
+            throw new IllegalArgumentException("服务器URL格式不正确: " + trimmedUrl);
+        }
         
         if (syncDir == null || syncDir.trim().isEmpty()) {
             throw new IllegalArgumentException("同步目录不能为空");
@@ -54,6 +69,21 @@ public class ClientProperties {
         
         if (enableAutoSync == null) {
             enableAutoSync = true;
+        }
+
+        if (enableS3DirectUpload == null) {
+            enableS3DirectUpload = false;
+        }
+
+        // S3 配置基本校验
+        if (Boolean.TRUE.equals(enableS3DirectUpload)) {
+            if (s3Bucket == null || s3Bucket.trim().isEmpty()) {
+                throw new IllegalArgumentException("启用S3直传时，s3Bucket不能为空");
+            }
+        }
+
+        if (s3PartSizeMb != null && s3PartSizeMb < 5) {
+            throw new IllegalArgumentException("S3分片大小至少为5MB");
         }
         
         // 确保同步目录存在

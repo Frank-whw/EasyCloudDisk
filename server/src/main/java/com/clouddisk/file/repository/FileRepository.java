@@ -59,4 +59,9 @@ public interface FileRepository extends JpaRepository<File, UUID> {
      * 根据 contentHash 查找所有文件（跨用户，用于全局去重）
      */
     Optional<File> findFirstByContentHash(String contentHash);
+
+    /**
+     * 根据文件ID与用户ID查询文件（用于权限校验与下载/信息获取）
+     */
+    Optional<File> findByFileIdAndUserId(UUID fileId, UUID userId);
 }

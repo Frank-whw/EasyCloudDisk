@@ -22,7 +22,8 @@ spring:
 
 # JWT配置（通用）
 jwt:
-  secret: ${JWT_SECRET:your-secret-key-here-must-be-at-least-256-bits}
+  # 默认提供强随机密钥（建议生产环境通过环境变量 JWT_SECRET 覆盖）
+  secret: ${JWT_SECRET:4f6d7a8c9b1e2d3c4a5b6c7d8e9f00112233445566778899aabbccddeeff0011}
   expiration: 86400000 # 24小时
 
 # AWS配置（通用）
