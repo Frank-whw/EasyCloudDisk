@@ -17,6 +17,27 @@ public class ClientProperties {
     private Boolean enableAutoSync = true;
     private String email;
     private String password;
+    private Boolean enableS3DirectUpload = false; // 是否启用S3直接上传
+
+    // S3 基本参数
+    private String s3Bucket;
+    private String s3Region = "us-east-1";
+    private String s3Endpoint; // 可选，用于 MinIO 等兼容服务
+    private Boolean s3PathStyle = false; // 是否启用 path-style 访问
+
+    // 分片上传与重试
+    private Integer s3PartSizeMb = 8; // 每片大小，至少 5MB
+    private Integer s3MaxRetries = 3; // 单片上传重试次数
+
+    // HTTP 客户端（供 AWS SDK 使用）
+    private Integer httpMaxConnections = 64;
+    private Integer httpConnTimeoutMs = 10_000;
+    private Integer httpReadTimeoutMs = 60_000;
+
+    // S3 凭据（可选）
+    private String s3AccessKeyId;
+    private String s3SecretAccessKey;
+    private String s3SessionToken; // 若使用临时凭据（如STS），可选
 
     @PostConstruct
     public void validate() {
@@ -54,5 +75,9 @@ public class ClientProperties {
 
     public boolean isEnableAutoSync() {
         return enableAutoSync;
+    }
+    
+    public boolean isEnableS3DirectUpload() {
+        return enableS3DirectUpload;
     }
 }

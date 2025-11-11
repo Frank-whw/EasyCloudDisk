@@ -106,6 +106,27 @@
             <version>5.10.0</version>
             <scope>test</scope>
         </dependency>
+        
+        <!-- AWS SDK for S3 -->
+        <dependency>
+            <groupId>software.amazon.awssdk</groupId>
+            <artifactId>s3</artifactId>
+            <version>2.20.26</version>
+        </dependency>
+
+        <!-- AWS SDK Apache HTTP Client -->
+        <dependency>
+            <groupId>software.amazon.awssdk</groupId>
+            <artifactId>apache-client</artifactId>
+            <version>2.20.26</version>
+        </dependency>
+        
+        <!-- AWS SDK for STS (用于身份认证) -->
+        <dependency>
+            <groupId>software.amazon.awssdk</groupId>
+            <artifactId>sts</artifactId>
+            <version>2.20.26</version>
+        </dependency>
     </dependencies>
 
     <build>

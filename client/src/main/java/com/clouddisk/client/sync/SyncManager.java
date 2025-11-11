@@ -2,6 +2,7 @@ package com.clouddisk.client.sync;
 
 import com.clouddisk.client.http.FileApiClient;
 import com.clouddisk.client.model.FileUploadRequest;
+import com.clouddisk.client.service.S3Service;
 import com.clouddisk.client.util.FileUtils;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Component;
@@ -40,6 +41,11 @@ public class SyncManager {
     private FileApiClient fileApiClient;
     
     /**
+     * S3服务，用于直接与AWS S3交互
+     */
+    private S3Service s3Service;
+    
+    /**
      * 压缩服务，用于文件压缩和解压缩
      */
     private CompressionService compressionService;
@@ -72,6 +78,14 @@ public class SyncManager {
      */
     public void setFileApiClient(FileApiClient fileApiClient) {
         this.fileApiClient = fileApiClient;
+    }
+    
+    /**
+     * 设置S3服务
+     * @param s3Service S3服务
+     */
+    public void setS3Service(S3Service s3Service) {
+        this.s3Service = s3Service;
     }
     
     /**
@@ -204,15 +218,24 @@ public class SyncManager {
             // 异步上传文件
             executorService.submit(() -> {
                 try {
-                    log.info("开始上传文件: {}", filePath);
-                    boolean success = fileApiClient.uploadFile(request);
+                    log.info("开始上传文件到S3: {}", filePath);
+                    boolean success = s3Service.uploadFile(request);
                     if (success) {
-                        log.info("文件上传完成: {}", filePath);
+                        log.info("文件上传到S3完成: {}", filePath);
                     } else {
-                        log.error("文件上传失败: {}", filePath);
+                        log.error("文件上传到S3失败: {}", filePath);
+                        
+                        // 如果S3上传失败，回退到原来的API方式
+                        log.info("尝试使用API方式上传文件: {}", filePath);
+                        boolean apiSuccess = fileApiClient.uploadFile(request);
+                        if (apiSuccess) {
+                            log.info("文件通过API上传完成: {}", filePath);
+                        } else {
+                            log.error("文件通过API上传失败: {}", filePath);
+                        }
                     }
                 } catch (Exception e) {
-                    log.error("文件上传失败: {}", filePath, e);
+                    log.error("文件上传到S3失败: {}", filePath, e);
                 }
             });
             

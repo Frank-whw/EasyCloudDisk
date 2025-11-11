@@ -33,6 +33,15 @@ aws:
   s3:
     bucket-name: ${AWS_S3_BUCKET:clouddisk-bucket}
     endpoint: ${AWS_S3_ENDPOINT:}  # 可选，用于MinIO等兼容S3服务
+    path-style: ${AWS_S3_PATH_STYLE:false}
+    multipart:
+      part-size-mb: ${AWS_S3_MULTIPART_PART_SIZE_MB:8}
+      max-retries: ${AWS_S3_MULTIPART_MAX_RETRIES:3}
+
+  http:
+    max-connections: ${AWS_HTTP_MAX_CONNECTIONS:64}
+    connection-timeout-ms: ${AWS_HTTP_CONNECTION_TIMEOUT_MS:10000}
+    read-timeout-ms: ${AWS_HTTP_READ_TIMEOUT_MS:60000}
 
 # 日志配置（通用）
 logging:

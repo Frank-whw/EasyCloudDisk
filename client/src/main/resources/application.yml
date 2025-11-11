@@ -1,10 +1,29 @@
 client:
-  server-url: http://ec2-54-95-61-230.ap-northeast-1.compute.amazonaws.com:8080
-  sync-dir: ${CLIENT_SYNC_DIR:./local}
-  compress-strategy: ${CLIENT_COMPRESS_STRATEGY:zip}
-  enable-auto-sync: ${CLIENT_ENABLE_AUTO_SYNC:true}
+  # 服务端 URL 与同步目录
+  serverUrl: ${CLIENT_SERVER_URL:http://localhost:8080}
+  syncDir: ${CLIENT_SYNC_DIR:./local}
+  compressStrategy: ${CLIENT_COMPRESS_STRATEGY:zip}
+  enableAutoSync: ${CLIENT_ENABLE_AUTO_SYNC:true}
+  enableS3DirectUpload: ${CLIENT_ENABLE_S3_DIRECT_UPLOAD:false}
   email: ${CLIENT_EMAIL:} # 改成自己的
   password: ${CLIENT_PASSWORD:} # 改成自己的
+  
+  # S3 相关配置
+  s3Bucket: ${AWS_S3_BUCKET:clouddisk-bucket}
+  s3Region: ${AWS_REGION:us-east-1}
+  s3Endpoint: ${AWS_S3_ENDPOINT:}
+  s3PathStyle: ${AWS_S3_PATH_STYLE:false}
+  s3PartSizeMb: ${AWS_S3_MULTIPART_PART_SIZE_MB:8}
+  s3MaxRetries: ${AWS_S3_MULTIPART_MAX_RETRIES:3}
+  # S3 凭据（可选，优先使用此配置；未配置则读取系统/环境默认凭据）
+  s3AccessKeyId: ${AWS_ACCESS_KEY_ID:}
+  s3SecretAccessKey: ${AWS_SECRET_ACCESS_KEY:}
+  s3SessionToken: ${AWS_SESSION_TOKEN:}
+  
+  # HTTP 客户端配置（S3 SDK 使用）
+  httpMaxConnections: ${AWS_HTTP_MAX_CONNECTIONS:64}
+  httpConnTimeoutMs: ${AWS_HTTP_CONNECTION_TIMEOUT_MS:10000}
+  httpReadTimeoutMs: ${AWS_HTTP_READ_TIMEOUT_MS:60000}
 
 spring:
   main:

@@ -2,6 +2,7 @@ package com.clouddisk.client;
 
 import com.clouddisk.client.config.ClientProperties;
 import com.clouddisk.client.http.FileApiClient;
+import com.clouddisk.client.service.S3Service;
 import com.clouddisk.client.sync.DirectoryWatcher;
 import com.clouddisk.client.sync.SyncManager;
 import lombok.Data;
@@ -47,6 +48,9 @@ public class ClientRuntimeContext {
     @Autowired
     private DirectoryWatcher directoryWatcher; // 文件监听器
     
+    @Autowired
+    private S3Service s3Service; // S3服务
+    
     private FileApiClient fileApiClient; // 文件API客户端
 
     /**
@@ -68,6 +72,9 @@ public class ClientRuntimeContext {
 
         // 设置文件API客户端
         this.syncManager.setFileApiClient(this.fileApiClient);
+        
+        // 设置S3服务
+        this.syncManager.setS3Service(this.s3Service);
 
         // 配置文件监听器
         try {
