@@ -3,15 +3,12 @@ package com.clouddisk.client.http;
 import com.clouddisk.client.model.ApiResponse;
 import com.clouddisk.client.model.AuthRequest;
 import com.clouddisk.client.model.AuthResponse;
-import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.hc.client5.http.classic.methods.HttpPost;
 import org.apache.hc.client5.http.impl.classic.CloseableHttpClient;
-import org.apache.hc.client5.http.impl.classic.CloseableHttpResponse;
 import org.apache.hc.client5.http.impl.classic.HttpClients;
 import org.apache.hc.core5.http.ClassicHttpResponse;
-import org.apache.hc.core5.http.ContentType;
 import org.apache.hc.core5.http.ParseException;
 import org.apache.hc.core5.http.io.entity.EntityUtils;
 import org.apache.hc.core5.http.io.entity.StringEntity;
@@ -34,9 +31,9 @@ public class AuthApiClient {
     public AuthApiClient(String baseUrl, CloseableHttpClient httpClient) {
         this.baseUrl = baseUrl;
         this.httpClient = httpClient;
-        // 初始化 ObjectMapper 实例
-        // ObjectMapper 是线程安全的，可以复用
+        // 初始化 ObjectMapper 实例并注册 Java 8 时间模块，兼容服务端的 Instant 字段
         this.objectMapper = new ObjectMapper();
+        this.objectMapper.findAndRegisterModules();
     }
 
     /**
@@ -46,32 +43,13 @@ public class AuthApiClient {
         return RetryTemplate.executeWithRetry(() -> {
             try {
                 AuthRequest request = new AuthRequest(email, password);
-                
-                String json = objectMapper.writeValueAsString(request);
-                StringEntity entity = new StringEntity(json, ContentType.APPLICATION_JSON);
-                
-                HttpPost httpPost = new HttpPost(baseUrl + "/api/auth/login");
-                httpPost.setEntity(entity);
-                
-                try (CloseableHttpResponse response = httpClient.execute(httpPost)) {
-                    int statusCode = response.getCode();
-                    String responseBody = EntityUtils.toString(response.getEntity());
-                    
-                    if (statusCode == 200) {
-                        AuthResponse authResponse = objectMapper.readValue(responseBody, AuthResponse.class);
-                        if (authResponse.getToken() != null) {
-                            log.info("用户 {} 登录成功", email);
-                            return authResponse.getToken();
-                        } else {
-                            log.error("登录响应中没有token");
-                            return null;
-                        }
-                    } else {
-                        log.error("登录失败，状态码: {}, 响应: {}", statusCode, responseBody);
-                        throw new RuntimeException("登录失败: " + responseBody);
-                    }
+                AuthResponse authResponse = sendAuthRequest("/auth/login", request);
+                if (authResponse == null || authResponse.getToken() == null || authResponse.getToken().isBlank()) {
+                    throw new RuntimeException("登录失败: 服务器未返回有效令牌");
                 }
-            } catch (Exception e) {
+                log.info("用户 {} 登录成功", email);
+                return authResponse.getToken();
+            } catch (IOException | ParseException e) {
                 log.error("登录请求失败", e);
                 throw new RuntimeException("登录请求失败: " + e.getMessage(), e);
             }
@@ -114,6 +92,7 @@ public class AuthApiClient {
         // 设置请求头，指定内容类型为 JSON
         // 这是必须的，因为服务端期望接收 JSON 格式的数据
         httpPost.setHeader("Content-Type", "application/json");
+        httpPost.setHeader("Accept", "application/json");
 
         // 使用 Jackson ObjectMapper 将请求对象序列化为 JSON 字符串
         // 这样可以确保数据以正确的格式发送到服务端
@@ -142,26 +121,19 @@ public class AuthApiClient {
         String jsonResponse = EntityUtils.toString(response.getEntity());
         
         // 检查响应状态码
-        if (response.getCode() >= 200 && response.getCode() < 300) {
-            // 成功响应
-            ApiResponse<AuthResponse> apiResponse = objectMapper.readValue(jsonResponse, 
+        ApiResponse<AuthResponse> apiResponse = objectMapper.readValue(jsonResponse,
                 objectMapper.getTypeFactory().constructParametricType(ApiResponse.class, AuthResponse.class));
-            
+
+        if (response.getCode() >= 200 && response.getCode() < 300) {
             if (apiResponse.isSuccess()) {
                 return apiResponse.getData();
-            } else {
-                throw new RuntimeException("认证失败: " + apiResponse.getMessage());
             }
-        } else {
-            // 错误响应
-            try {
-                ApiResponse<AuthResponse> apiResponse = objectMapper.readValue(jsonResponse, 
-                    objectMapper.getTypeFactory().constructParametricType(ApiResponse.class, AuthResponse.class));
-                throw new RuntimeException("服务器错误: " + apiResponse.getMessage() + " (代码: " + apiResponse.getCode() + ")");
-            } catch (Exception e) {
-                // 如果无法解析为ApiResponse格式，则直接抛出原始响应
-                throw new RuntimeException("HTTP错误: " + response.getCode() + " - " + jsonResponse);
-            }
+            String code = apiResponse.getCode() != null ? apiResponse.getCode() : "UNKNOWN";
+            throw new RuntimeException("认证失败: " + apiResponse.getMessage() + " (代码: " + code + ")");
         }
+
+        String code = apiResponse.getCode() != null ? apiResponse.getCode() : String.valueOf(response.getCode());
+        String message = apiResponse.getMessage() != null ? apiResponse.getMessage() : jsonResponse;
+        throw new RuntimeException("HTTP错误: " + response.getCode() + " - " + message + " (代码: " + code + ")");
     }
 }

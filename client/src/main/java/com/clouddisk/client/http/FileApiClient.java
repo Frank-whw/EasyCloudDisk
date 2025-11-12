@@ -18,10 +18,12 @@ import org.apache.hc.core5.http.io.entity.ByteArrayEntity;
 import com.clouddisk.client.util.RetryTemplate;
 
 import java.io.IOException;
+import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Map;
 
 /**
  * 文件API客户端
@@ -120,6 +122,8 @@ public class FileApiClient {
                     builder.addBinaryBody("file", request.getCompressedPayload(), ContentType.APPLICATION_OCTET_STREAM, filename);
                 }
                 if (request.getFilePath() != null) {
+                    // 服务器使用 "path" 参数接收目录信息，为兼容旧版本同时发送 filePath
+                    builder.addTextBody("path", request.getFilePath());
                     builder.addTextBody("filePath", request.getFilePath());
                 }
                 if (request.getContentHash() != null) {
@@ -245,8 +249,13 @@ public class FileApiClient {
                 }
                 
                 // 构建请求体
-                String jsonBody = "{\"contentHash\":\"" + contentHash + "\",\"filePath\":\"" + filePath + "\"}";
-                httpPost.setEntity(new ByteArrayEntity(jsonBody.getBytes(), ContentType.APPLICATION_JSON));
+                ObjectMapper mapper = new ObjectMapper();
+                mapper.findAndRegisterModules();
+                String jsonBody = mapper.writeValueAsString(Map.of(
+                        "contentHash", contentHash,
+                        "filePath", filePath
+                ));
+                httpPost.setEntity(new ByteArrayEntity(jsonBody.getBytes(StandardCharsets.UTF_8), ContentType.APPLICATION_JSON));
                 
                 // 执行请求
                 return httpClient.execute(httpPost, response -> {

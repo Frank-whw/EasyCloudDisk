@@ -372,14 +372,13 @@ public class ClientApplication implements CommandLineRunner {
                 return;
             }
             
-            System.out.println(String.format("%-40s %-15s %-20s", "文件名", "大小", "上传时间"));
+            System.out.println(String.format("%-40s %-15s %-20s", "文件名", "大小", "更新时间"));
             System.out.println("------------------------------------------------------------------------------------");
             
             for (com.clouddisk.client.model.FileResponse file : files) {
                 String name = file.getName() != null ? file.getName() : "未知";
                 String size = file.getFormattedSize();
-                String time = file.getCreatedAt() != null ? 
-                    file.getCreatedAt().toString().substring(0, 19).replace('T', ' ') : "未知";
+                String time = file.getDisplayTime();
                 
                 System.out.println(String.format("%-40s %-15s %-20s", name, size, time));
             }
