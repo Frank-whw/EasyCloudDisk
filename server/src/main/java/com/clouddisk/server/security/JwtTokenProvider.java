@@ -10,6 +10,7 @@ import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Component;
 
 import java.security.Key;
+import javax.crypto.SecretKey;
 import java.time.Duration;
 import java.time.Instant;
 import java.util.Date;
@@ -21,8 +22,8 @@ public class JwtTokenProvider {
 
     private static final Logger log = LoggerFactory.getLogger(JwtTokenProvider.class);
 
-    private final Key accessKey;
-    private final Key refreshKey;
+    private final SecretKey accessKey;
+    private final SecretKey refreshKey;
     private final long accessTokenValidityMs;
     private final long refreshTokenValidityMs;
 
@@ -36,8 +37,8 @@ public class JwtTokenProvider {
         } catch (IllegalArgumentException ex) {
             keyBytes = secret.getBytes(java.nio.charset.StandardCharsets.UTF_8);
         }
-        this.accessKey = Keys.hmacShaKeyFor(keyBytes);
-        this.refreshKey = Keys.hmacShaKeyFor(keyBytes);
+        this.accessKey = (SecretKey) Keys.hmacShaKeyFor(keyBytes);
+        this.refreshKey = (SecretKey) Keys.hmacShaKeyFor(keyBytes);
         this.accessTokenValidityMs = expirationMs;
         this.refreshTokenValidityMs = Duration.ofDays(7).toMillis();
     }
@@ -91,7 +92,7 @@ public class JwtTokenProvider {
                 .getPayload();
     }
 
-    public String resolveToken(javax.servlet.http.HttpServletRequest request) {
+    public String resolveToken(jakarta.servlet.http.HttpServletRequest request) {
         String bearer = request.getHeader("Authorization");
         if (bearer != null && bearer.startsWith("Bearer ")) {
             return bearer.substring(7);

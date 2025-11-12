@@ -10,6 +10,7 @@ import software.amazon.awssdk.http.SdkHttpClient;
 import software.amazon.awssdk.http.apache.ApacheHttpClient;
 import software.amazon.awssdk.regions.Region;
 import software.amazon.awssdk.services.s3.S3Client;
+import software.amazon.awssdk.services.s3.S3ClientBuilder;
 import software.amazon.awssdk.services.s3.S3Configuration;
 
 import java.net.URI;
@@ -37,7 +38,7 @@ public class AwsConfig {
         S3Configuration.Builder s3ConfigBuilder = S3Configuration.builder()
                 .pathStyleAccessEnabled(properties.getS3().isPathStyle());
 
-        S3Client.Builder builder = S3Client.builder()
+        S3ClientBuilder builder = S3Client.builder()
                 .httpClient(httpClient)
                 .credentialsProvider(StaticCredentialsProvider.create(credentials))
                 .region(Region.of(properties.getRegion()))
