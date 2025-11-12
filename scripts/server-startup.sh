@@ -19,13 +19,28 @@ JVM_OPTS="$JVM_OPTS -XX:+UnlockExperimentalVMOptions"
 JVM_OPTS="$JVM_OPTS -XX:+UseContainerSupport"
 
 # Spring Boot 配置
-SPRING_PROFILES="prod"
 SERVER_PORT="8080"
 
 # ==================== 函数定义 ====================
 log() {
     echo "[$(date '+%Y-%m-%d %H:%M:%S')] $1"
 }
+
+ENV_FILE="/etc/default/clouddisk"
+APP_ENV_FILE="$(dirname "$0")/.env"
+if [ -f "$ENV_FILE" ]; then
+    log "加载环境文件: $ENV_FILE"
+    set -a
+    . "$ENV_FILE"
+    set +a
+elif [ -f "$APP_ENV_FILE" ]; then
+    log "加载环境文件: $APP_ENV_FILE"
+    set -a
+    . "$APP_ENV_FILE"
+    set +a
+else
+    log "未检测到环境文件，使用当前会话变量"
+fi
 
 check_java() {
     if ! command -v java &> /dev/null; then
@@ -85,7 +100,6 @@ start_app() {
     
     # 构建启动命令
     CMD="java $JVM_OPTS"
-    CMD="$CMD -Dspring.profiles.active=$SPRING_PROFILES"
     CMD="$CMD -Dserver.port=$SERVER_PORT"
     CMD="$CMD -Dfile.encoding=UTF-8"
     CMD="$CMD -Djava.security.egd=file:/dev/./urandom"
@@ -103,21 +117,6 @@ start_app() {
     
     # 等待应用启动
     log "等待应用启动..."
-    for i in {1..60}; do
-        if ps -p "$APP_PID" > /dev/null 2>&1; then
-            # 检查端口是否监听
-            if netstat -tlnp 2>/dev/null | grep ":$SERVER_PORT " > /dev/null; then
-                log "应用启动成功，监听端口: $SERVER_PORT"
-                return 0
-            fi
-        else
-            log "应用进程已退出，请检查日志: $LOG_FILE"
-            return 1
-        fi
-        sleep 1
-    done
-    
-    log "应用启动超时，请检查日志: $LOG_FILE"
     return 1
 }
 
