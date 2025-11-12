@@ -71,7 +71,6 @@ public class UserService {
             UserPrincipal principal = (UserPrincipal) authentication.getPrincipal();
             User user = userRepository.findById(principal.getUserId())
                     .orElseThrow(() -> new BusinessException(ErrorCode.USER_NOT_FOUND));
-            user.setLastLoginAt(Instant.now());
             return buildAuthResponse(user);
         } catch (BadCredentialsException ex) {
             throw new BusinessException(ErrorCode.INVALID_CREDENTIALS);
