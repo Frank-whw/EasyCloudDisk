@@ -33,8 +33,7 @@ public class User {
     @Column(name = "updated_at", nullable = false)
     private Instant updatedAt;
 
-    @Column(name = "last_login_at")
-    private Instant lastLoginAt;
+    
 
     @PrePersist
     public void prePersist() {
@@ -101,11 +100,5 @@ public class User {
         this.updatedAt = updatedAt;
     }
 
-    public Instant getLastLoginAt() {
-        return lastLoginAt;
-    }
-
-    public void setLastLoginAt(Instant lastLoginAt) {
-        this.lastLoginAt = lastLoginAt;
-    }
+    
 }
