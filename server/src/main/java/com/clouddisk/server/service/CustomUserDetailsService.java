@@ -21,10 +21,11 @@ public class CustomUserDetailsService implements UserDetailsService {
     }
 
     @Override
-    @Cacheable(value = "users", key = "#username")
+    @Cacheable(value = "users", key = "#root.args[0]")
     public UserDetails loadUserByUsername(String username) throws UsernameNotFoundException {
+        String normalized = username == null ? null : username.toLowerCase();
         User user = userRepository.findById(username)
-                .or(() -> userRepository.findByEmailIgnoreCase(username))
+                .or(() -> userRepository.findByEmailIgnoreCase(normalized))
                 .orElseThrow(() -> new BusinessException(ErrorCode.USER_NOT_FOUND));
         return new UserPrincipal(user);
     }
