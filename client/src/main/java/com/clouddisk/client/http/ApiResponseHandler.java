@@ -12,16 +12,25 @@ public class ApiResponseHandler {
     public <T> T unwrap(ApiResponse<T> response) {
         if (response.isSuccess()) {
             return response.getData();
-        } else {
-            // 根据不同的错误码抛出不同的异常
-            switch (response.getCode()) {
-                case 400:
-                    throw new IllegalArgumentException(response.getMessage());
-                case 401:
-                    throw new SecurityException(response.getMessage());
-                default:
-                    throw new RuntimeException(response.getMessage());
-            }
+        }
+
+        String message = response.getMessage() != null ? response.getMessage() : "服务器返回未知错误";
+        String code = response.getCode();
+        if (code == null) {
+            throw new RuntimeException(message);
+        }
+
+        switch (code) {
+            case "VALIDATION_ERROR":
+            case "FILE_NOT_FOUND":
+            case "DIRECTORY_ALREADY_EXISTS":
+                throw new IllegalArgumentException(message);
+            case "ACCESS_DENIED":
+            case "UNAUTHORIZED":
+            case "FORBIDDEN":
+                throw new SecurityException(message);
+            default:
+                throw new RuntimeException(String.format("%s (code=%s)", message, code));
         }
     }
 }

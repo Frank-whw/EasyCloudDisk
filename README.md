@@ -46,6 +46,19 @@
    curl -X POST http://54.95.61.230:8080/auth/login \
      -H "Content-Type: application/json" \
      -d '{"email":"test@example.com","password":"Test123456"}'
+
+   # 响应示例（所有 API 都使用统一的包装结构，code 为字符串枚举）
+   # {
+   #   "success": true,
+   #   "message": "登录成功",
+   #   "code": "SUCCESS",
+   #   "data": {
+   #     "userId": "...",
+   #     "email": "test@example.com",
+   #     "token": "<JWT>",
+   #     "refreshToken": "<JWT>"
+   #   }
+   # }
    ```
 
 ### 方式二：本地启动后端服务
@@ -88,8 +101,19 @@
      --aws.s3.bucket-name=your-bucket-name \
      --spring.profiles.active=dev
    ```
-   
+
    服务将在 `http://localhost:8080` 启动
+
+   **CORS 配置**
+
+   为了避免在开发环境中出现跨域凭证错误，后端提供了新的环境变量用于覆盖默认配置：
+
+   | 环境变量 | 说明 | 默认值 |
+   | --- | --- | --- |
+   | `APP_CORS_ALLOWED_ORIGINS` | 允许访问的前端域名（多个值使用逗号分隔） | `http://localhost:3000` |
+   | `APP_CORS_ALLOW_CREDENTIALS` | 是否向指定来源发送 Cookie / Authorization 凭证 | `false` |
+
+   当使用通配符 `*` 作为来源时，`allow-credentials` 会被强制关闭以符合浏览器安全策略。
 
 6. **验证服务**
    ```bash

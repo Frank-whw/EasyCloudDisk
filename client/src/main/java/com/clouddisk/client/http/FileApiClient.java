@@ -122,6 +122,8 @@ public class FileApiClient {
                     builder.addBinaryBody("file", request.getCompressedPayload(), ContentType.APPLICATION_OCTET_STREAM, filename);
                 }
                 if (request.getFilePath() != null) {
+                    // 服务器使用 "path" 参数接收目录信息，为兼容旧版本同时发送 filePath
+                    builder.addTextBody("path", request.getFilePath());
                     builder.addTextBody("filePath", request.getFilePath());
                 }
                 if (request.getContentHash() != null) {

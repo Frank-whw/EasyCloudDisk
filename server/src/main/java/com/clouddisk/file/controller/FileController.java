@@ -3,13 +3,14 @@ package com.clouddisk.file.controller;
 import com.clouddisk.common.dto.ApiResponse;
 import com.clouddisk.common.dto.FileResponse;
 import com.clouddisk.common.dto.FileUploadResponse;
+import com.clouddisk.common.exception.BusinessException;
 import com.clouddisk.file.dto.NotifyUploadRequest;
 import com.clouddisk.file.service.FileService;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.core.io.InputStreamResource;
 import java.io.BufferedInputStream;
-import org.springframework.http.HttpHeaders;
+import org.springframework.http.ContentDisposition;
 import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
@@ -17,6 +18,7 @@ import org.springframework.security.core.userdetails.UserDetails;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.multipart.MultipartFile;
 
+import java.nio.charset.StandardCharsets;
 import java.util.List;
 import java.util.UUID;
 
@@ -32,9 +34,8 @@ public class FileController {
      * 获取用户文件列表
      */
     @GetMapping
-    public ApiResponse<List<FileResponse>> getUserFiles(@AuthenticationPrincipal String userIdPrincipal) {
-        // 从UserDetails中获取用户ID
-        UUID userId = UUID.fromString(userIdPrincipal);
+    public ApiResponse<List<FileResponse>> getUserFiles(@AuthenticationPrincipal Object principal) {
+        UUID userId = resolveUserId(principal);
         List<FileResponse> files = fileService.getUserFiles(userId);
         return ApiResponse.success("列表成功", files);
     }
@@ -44,21 +45,20 @@ public class FileController {
      */
     @PostMapping("/upload")
     public ApiResponse<FileUploadResponse> uploadFile(
-            @AuthenticationPrincipal String userIdPrincipal,
+            @AuthenticationPrincipal Object principal,
             @RequestParam("file") MultipartFile file,
             @RequestParam(value = "filePath", required = false, defaultValue = "/") String filePath,
             @RequestParam(value = "contentHash", required = false) String contentHash) {
         // 验证文件
         if (file.isEmpty()) {
-            throw new com.clouddisk.common.exception.BusinessException("文件不能为空", 400);
+            throw new BusinessException("文件不能为空", 400);
         }
 
         if (file.getSize() > 100 * 1024 * 1024) { // 100MB限制
-            throw new com.clouddisk.common.exception.BusinessException("文件大小不能超过100MB", 413);
+            throw new BusinessException("文件大小不能超过100MB", 413);
         }
 
-        // 从principal中获取用户ID
-        UUID userId = UUID.fromString(userIdPrincipal);
+        UUID userId = resolveUserId(principal);
 
         // 上传文件，传递可选的内容哈希
         FileUploadResponse response = fileService.uploadFile(userId, file, filePath, contentHash);
@@ -70,10 +70,9 @@ public class FileController {
      */
     @GetMapping("/{fileId}/download")
     public ResponseEntity<InputStreamResource> downloadFile(
-            @AuthenticationPrincipal String userIdPrincipal,
+            @AuthenticationPrincipal Object principal,
             @PathVariable("fileId") UUID fileId) {
-        // 从principal中获取用户ID
-        UUID userId = UUID.fromString(userIdPrincipal);
+        UUID userId = resolveUserId(principal);
 
         // 获取文件信息
         FileResponse fileInfo = fileService.getFileInfo(userId, fileId);
@@ -85,9 +84,12 @@ public class FileController {
         );
         InputStreamResource resource = new InputStreamResource(stream);
 
+        ContentDisposition contentDisposition = ContentDisposition.attachment()
+                .filename(fileInfo.getName(), StandardCharsets.UTF_8)
+                .build();
+
         return ResponseEntity.ok()
-                .header(HttpHeaders.CONTENT_DISPOSITION,
-                        "attachment; filename=\"" + fileInfo.getName() + "\"")
+                .headers(headers -> headers.setContentDisposition(contentDisposition))
                 .contentType(MediaType.APPLICATION_OCTET_STREAM)
                 .contentLength(fileInfo.getFileSize())
                 .body(resource);
@@ -98,10 +100,9 @@ public class FileController {
      */
     @DeleteMapping("/{fileId}")
     public ApiResponse<Void> deleteFile(
-            @AuthenticationPrincipal String userIdPrincipal,
+            @AuthenticationPrincipal Object principal,
             @PathVariable("fileId") UUID fileId) {
-        // 从principal中获取用户ID
-        UUID userId = UUID.fromString(userIdPrincipal);
+        UUID userId = resolveUserId(principal);
 
         fileService.deleteFile(userId, fileId);
         return ApiResponse.success("删除成功", null);
@@ -113,11 +114,10 @@ public class FileController {
      */
     @GetMapping("/check")
     public ResponseEntity<ApiResponse<Void>> checkFileExists(
-            @AuthenticationPrincipal String userIdPrincipal,
+            @AuthenticationPrincipal Object principal,
             @RequestParam("contentHash") String contentHash) {
-        // 从principal中获取用户ID
-        UUID userId = UUID.fromString(userIdPrincipal);
-        
+        UUID userId = resolveUserId(principal);
+
         boolean exists = fileService.checkFileExists(userId, contentHash);
         if (exists) {
             return ResponseEntity.status(200).body(ApiResponse.success("文件已存在", null));
@@ -131,11 +131,10 @@ public class FileController {
      */
     @PostMapping("/notify-upload")
     public ApiResponse<FileUploadResponse> notifyUploadComplete(
-            @AuthenticationPrincipal String userIdPrincipal,
+            @AuthenticationPrincipal Object principal,
             @RequestBody NotifyUploadRequest request) {
-        // 从principal中获取用户ID
-        UUID userId = UUID.fromString(userIdPrincipal);
-        
+        UUID userId = resolveUserId(principal);
+
         FileUploadResponse response = fileService.notifyUploadComplete(
             userId, request.getContentHash(), request.getFilePath(), request.getFileSize());
         return ApiResponse.success("通知成功", response);
@@ -146,12 +145,35 @@ public class FileController {
      */
     @GetMapping("/{fileId}")
     public ApiResponse<FileResponse> getFileInfo(
-            @AuthenticationPrincipal String userIdPrincipal,
+            @AuthenticationPrincipal Object principal,
             @PathVariable("fileId") UUID fileId) {
-        // 从principal中获取用户ID
-        UUID userId = UUID.fromString(userIdPrincipal);
+        UUID userId = resolveUserId(principal);
 
         FileResponse fileInfo = fileService.getFileInfo(userId, fileId);
         return ApiResponse.success("获取成功", fileInfo);
+    }
+
+    private UUID resolveUserId(Object principal) {
+        if (principal instanceof UUID uuid) {
+            return uuid;
+        }
+        if (principal instanceof String userId && !userId.isBlank()) {
+            return parseUuid(userId);
+        }
+        if (principal instanceof UserDetails userDetails) {
+            String username = userDetails.getUsername();
+            if (username != null && !username.isBlank()) {
+                return parseUuid(username);
+            }
+        }
+        throw new BusinessException("用户身份信息缺失", 401);
+    }
+
+    private UUID parseUuid(String raw) {
+        try {
+            return UUID.fromString(raw);
+        } catch (IllegalArgumentException ex) {
+            throw new BusinessException("用户身份信息格式非法", 401);
+        }
     }
 }
