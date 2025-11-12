@@ -10,11 +10,11 @@ import java.util.UUID;
 public class FileVersion {
 
     @Id
-    @Column(name = "version_id", nullable = false, updatable = false, length = 36)
+    @Column(name = "version_id", nullable = false, updatable = false, columnDefinition = "uuid")
     private String versionId;
 
     @ManyToOne(fetch = FetchType.LAZY)
-    @JoinColumn(name = "file_id", nullable = false)
+    @JoinColumn(name = "file_id", nullable = false, columnDefinition = "uuid")
     private FileEntity file;
 
     @Column(name = "version_number", nullable = false)

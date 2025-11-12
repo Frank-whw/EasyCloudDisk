@@ -15,7 +15,7 @@ import java.util.UUID;
 public class User {
 
     @Id
-    @Column(name = "user_id", nullable = false, updatable = false, length = 36)
+    @Column(name = "user_id", nullable = false, updatable = false, columnDefinition = "uuid")
     private String userId;
 
     @Column(name = "email", nullable = false, unique = true, length = 255)
@@ -34,7 +34,6 @@ public class User {
     private Instant updatedAt;
 
     
-
     @PrePersist
     public void prePersist() {
         Instant now = Instant.now();
