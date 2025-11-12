@@ -13,6 +13,7 @@ import com.clouddisk.server.storage.StorageService;
 import org.apache.commons.codec.digest.DigestUtils;
 import org.springframework.core.io.InputStreamResource;
 import org.springframework.core.io.Resource;
+import org.springframework.http.ContentDisposition;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
@@ -23,6 +24,7 @@ import org.springframework.web.multipart.MultipartFile;
 
 import java.io.IOException;
 import java.io.InputStream;
+import java.nio.charset.StandardCharsets;
 import java.util.Comparator;
 import java.util.List;
 import java.util.Optional;
@@ -138,8 +140,12 @@ public class FileService {
         }
         InputStream stream = storageService.loadFile(file.getStorageKey(), true);
         Resource resource = new InputStreamResource(stream);
+        ContentDisposition contentDisposition = ContentDisposition.attachment()
+                .filename(file.getName(), StandardCharsets.UTF_8)
+                .build();
+
         return ResponseEntity.ok()
-                .header(HttpHeaders.CONTENT_DISPOSITION, "attachment; filename=" + file.getName())
+                .headers(headers -> headers.setContentDisposition(contentDisposition))
                 .contentLength(file.getFileSize())
                 .contentType(MediaType.APPLICATION_OCTET_STREAM)
                 .body(resource);

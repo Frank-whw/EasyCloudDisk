@@ -16,10 +16,11 @@ import java.io.IOException;
 import java.io.InputStream;
 import java.security.MessageDigest;
 import java.security.NoSuchAlgorithmException;
-import java.time.LocalDateTime;
 import java.util.List;
+import java.util.Locale;
 import java.util.Optional;
 import java.util.UUID;
+import java.util.regex.Pattern;
 import java.util.stream.Collectors;
 
 @Service
@@ -59,6 +60,7 @@ public class FileService {
             String contentHash = contentHashOpt != null && !contentHashOpt.isEmpty()
                     ? contentHashOpt
                     : calculateFileHash(file);
+            contentHash = validateContentHash(contentHash);
             
             String fileName = sanitizeFileName(file.getOriginalFilename());
             String normalizedPath = normalizePath(filePath);
@@ -184,6 +186,7 @@ public class FileService {
      * 检查文件是否已存在（用于去重验证）
      */
     public boolean checkFileExists(UUID userId, String contentHash) {
+        contentHash = validateContentHash(contentHash);
         log.info("检查文件是否存在，用户ID: {}, 内容哈希: {}", userId, contentHash);
         
         // 检查用户是否已有相同文件（基于内容哈希）
@@ -202,6 +205,7 @@ public class FileService {
      */
     @Transactional
     public FileUploadResponse notifyUploadComplete(UUID userId, String contentHash, String filePath, Long fileSizeOpt) {
+        contentHash = validateContentHash(contentHash);
         log.info("通知上传完成，用户ID: {}, 内容哈希: {}, 文件路径: {}", userId, contentHash, filePath);
         
         try {
@@ -396,4 +400,17 @@ public class FileService {
         }
         return cleaned;
     }
+
+    private String validateContentHash(String contentHash) {
+        if (contentHash == null) {
+            throw new BusinessException("内容哈希不能为空", 400);
+        }
+        String normalized = contentHash.trim();
+        if (!SHA256_PATTERN.matcher(normalized).matches()) {
+            throw new BusinessException("内容哈希格式非法", 400);
+        }
+        return normalized.toLowerCase(Locale.ROOT);
+    }
+
+    private static final Pattern SHA256_PATTERN = Pattern.compile("^[a-fA-F0-9]{64}$");
 }

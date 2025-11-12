@@ -4,7 +4,7 @@ import com.clouddisk.user.dto.AuthResponse;
 import com.clouddisk.user.dto.AuthRequest;
 import com.clouddisk.user.entity.User;
 import com.clouddisk.user.repository.UserRepository;
-import com.clouddisk.common.security.JwtTokenProvider;
+import com.clouddisk.server.security.JwtTokenProvider;
 
 import java.util.UUID;
 import org.springframework.transaction.annotation.Transactional;
@@ -15,6 +15,7 @@ import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 
 import java.util.Optional;
+import java.util.Map;
 
 /**
  * 用户服务类
@@ -51,7 +52,7 @@ public class UserService {
         // 3. 保存用户到数据库
         User savedUser = userRepository.save(user);
         // 4. 生成JWT令牌
-        String token = jwtTokenProvider.generateToken(savedUser.getUserId().toString());
+        String token = jwtTokenProvider.generateToken(savedUser.getUserId().toString(), Map.of());
         // 5. 返回认证响应
         return new AuthResponse(token, savedUser.getUserId(), savedUser.getEmail());
     }
@@ -73,7 +74,7 @@ public class UserService {
         User user = userRepository.findByEmail(authRequest.getEmail())
                 .orElseThrow(() -> new com.clouddisk.common.exception.BusinessException("用户不存在", 404));
         // 3. 生成JWT令牌
-        String token = jwtTokenProvider.generateToken(user.getUserId().toString());
+        String token = jwtTokenProvider.generateToken(user.getUserId().toString(), Map.of());
         // 4. 返回认证响应
         return new AuthResponse(token, user.getUserId(), user.getEmail());
     }

@@ -25,6 +25,11 @@ jwt:
   secret: ${JWT_SECRET:4f6d7a8c9b1e2d3c4a5b6c7d8e9f00112233445566778899aabbccddeeff0011}
   expiration: 86400000 # 24小时
 
+app:
+  cors:
+    allowed-origins: ${APP_CORS_ALLOWED_ORIGINS:http://localhost:3000}
+    allow-credentials: ${APP_CORS_ALLOW_CREDENTIALS:false}
+
 # AWS配置（通用）
 aws:
   access-key-id: ${AWS_ACCESS_KEY_ID:your-access-key-id}
