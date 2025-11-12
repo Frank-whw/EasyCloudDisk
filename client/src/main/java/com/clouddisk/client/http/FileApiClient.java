@@ -15,7 +15,7 @@ import org.apache.hc.client5.http.impl.classic.HttpClients;
 import org.apache.hc.core5.http.ContentType;
 import org.apache.hc.client5.http.entity.mime.MultipartEntityBuilder;
 import org.apache.hc.core5.http.io.entity.ByteArrayEntity;
-import com.clouddisk.client.config.RetryTemplate;
+import com.clouddisk.client.util.RetryTemplate;
 
 import java.io.IOException;
 import java.nio.file.Files;

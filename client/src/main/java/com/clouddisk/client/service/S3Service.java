@@ -2,9 +2,10 @@ package com.clouddisk.client.service;
 
 import com.clouddisk.client.model.FileUploadRequest;
 import com.clouddisk.client.config.ClientProperties;
-import com.clouddisk.client.config.RetryTemplate;
+import com.clouddisk.client.util.RetryTemplate;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
+import jakarta.annotation.PostConstruct;
 import software.amazon.awssdk.auth.credentials.DefaultCredentialsProvider;
 import software.amazon.awssdk.auth.credentials.AwsBasicCredentials;
 import software.amazon.awssdk.auth.credentials.StaticCredentialsProvider;
@@ -19,7 +20,6 @@ import software.amazon.awssdk.services.s3.S3ClientBuilder;
 import software.amazon.awssdk.services.s3.S3Configuration;
 import software.amazon.awssdk.core.retry.RetryPolicy;
 
-import javax.annotation.PostConstruct;
 import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
@@ -73,7 +73,7 @@ public class S3Service {
                 .overrideConfiguration(cfg -> cfg.retryPolicy(RetryPolicy.defaultRetryPolicy()));
 
         // 使用默认凭证链 - 简化配置，支持环境变量、IAM角色等
-        builder.credentialsProvider(DefaultCredentialsProvider.create());
+        builder.credentialsProvider(DefaultCredentialsProvider.builder().build());
 
         if (clientProperties.getS3Endpoint() != null && !clientProperties.getS3Endpoint().isBlank()) {
             builder.endpointOverride(URI.create(clientProperties.getS3Endpoint()));
@@ -182,6 +182,7 @@ public class S3Service {
                 throw new RuntimeException("S3上传失败", e);
             }
         }, 3); // 最多重试3次
+    }
     
     /**
      * 从S3下载文件
