@@ -9,11 +9,10 @@ spring:
     name: clouddisk-server
   profiles:
     active: dev
-    group:
-      dev:
-        - application-dev.yml
-      prod:
-        - application-prod.yml
+  config:
+    import:
+      - optional:application-dev.yml
+      - optional:application-prod.yml
 
   servlet:
     multipart:
@@ -51,3 +50,9 @@ logging:
     file: "%d{yyyy-MM-dd HH:mm:ss.SSS} [%thread] %-5level %logger{36} - %msg%n"
   file:
     name: logs/server.log
+
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health,info
