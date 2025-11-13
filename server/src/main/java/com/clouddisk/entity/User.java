@@ -3,9 +3,12 @@ package com.clouddisk.entity;
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
 import jakarta.persistence.Id;
+import jakarta.persistence.GeneratedValue;
+import jakarta.persistence.GenerationType;
 import jakarta.persistence.PrePersist;
 import jakarta.persistence.PreUpdate;
 import jakarta.persistence.Table;
+import lombok.Data;
 
 import java.time.Instant;
 import java.util.UUID;
@@ -14,11 +17,13 @@ import java.util.UUID;
  * 用户实体，存储账号与认证相关信息。
  */
 @Entity
+@Data
 @Table(name = "users")
 public class User {
 
     @Id
-    @Column(name = "user_id", nullable = false, updatable = false, columnDefinition = "uuid")
+    @GeneratedValue(strategy = GenerationType.UUID)
+    @Column(name = "user_id", nullable = false, updatable = false, length = 36)
     private String userId;
 
     @Column(name = "email", nullable = false, unique = true, length = 255)
@@ -40,9 +45,6 @@ public class User {
     @PrePersist
     public void prePersist() {
         Instant now = Instant.now();
-        if (userId == null) {
-            userId = UUID.randomUUID().toString();
-        }
         createdAt = now;
         updatedAt = now;
         email = email.toLowerCase();
@@ -53,54 +55,4 @@ public class User {
         updatedAt = Instant.now();
         email = email.toLowerCase();
     }
-
-    public String getUserId() {
-        return userId;
-    }
-
-    public void setUserId(String userId) {
-        this.userId = userId;
-    }
-
-    public String getEmail() {
-        return email;
-    }
-
-    public void setEmail(String email) {
-        this.email = email;
-    }
-
-    public String getPasswordHash() {
-        return passwordHash;
-    }
-
-    public void setPasswordHash(String passwordHash) {
-        this.passwordHash = passwordHash;
-    }
-
-    public int getTokenVersion() {
-        return tokenVersion;
-    }
-
-    public void setTokenVersion(int tokenVersion) {
-        this.tokenVersion = tokenVersion;
-    }
-
-    public Instant getCreatedAt() {
-        return createdAt;
-    }
-
-    public void setCreatedAt(Instant createdAt) {
-        this.createdAt = createdAt;
-    }
-
-    public Instant getUpdatedAt() {
-        return updatedAt;
-    }
-
-    public void setUpdatedAt(Instant updatedAt) {
-        this.updatedAt = updatedAt;
-    }
-
-    
 }

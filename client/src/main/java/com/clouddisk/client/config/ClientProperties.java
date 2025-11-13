@@ -79,7 +79,7 @@ public class ClientProperties {
         }
 
         // S3 配置基本校验
-        if (Boolean.TRUE.equals(enableS3DirectUpload)) {
+        if (enableS3DirectUpload) {
             if (s3Bucket == null || s3Bucket.trim().isEmpty()) {
                 throw new IllegalArgumentException("启用S3直传时，s3Bucket不能为空");
             }

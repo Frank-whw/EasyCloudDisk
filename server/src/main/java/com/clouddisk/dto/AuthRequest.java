@@ -3,10 +3,12 @@ package com.clouddisk.dto;
 import jakarta.validation.constraints.Email;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.Size;
+import lombok.Data;
 
 /**
  * 登录请求载荷。
  */
+@Data
 public class AuthRequest {
 
     @Email(message = "邮箱格式不正确")
@@ -19,27 +21,5 @@ public class AuthRequest {
 
     private boolean rememberMe;
 
-    public String getEmail() {
-        return email;
-    }
 
-    public void setEmail(String email) {
-        this.email = email;
-    }
-
-    public String getPassword() {
-        return password;
-    }
-
-    public void setPassword(String password) {
-        this.password = password;
-    }
-
-    public boolean isRememberMe() {
-        return rememberMe;
-    }
-
-    public void setRememberMe(boolean rememberMe) {
-        this.rememberMe = rememberMe;
-    }
 }

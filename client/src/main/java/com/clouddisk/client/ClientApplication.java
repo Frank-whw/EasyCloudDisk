@@ -389,7 +389,7 @@ public class ClientApplication implements CommandLineRunner {
                 return;
             }
             
-            System.out.println(String.format("%-40s %-15s %-20s", "文件名", "大小", "更新时间"));
+            System.out.printf("%-40s %-15s %-20s%n", "文件名", "大小", "更新时间");
             System.out.println("------------------------------------------------------------------------------------");
             
             for (com.clouddisk.client.model.FileResponse file : files) {
@@ -397,7 +397,7 @@ public class ClientApplication implements CommandLineRunner {
                 String size = file.getFormattedSize();
                 String time = file.getDisplayTime();
                 
-                System.out.println(String.format("%-40s %-15s %-20s", name, size, time));
+                System.out.printf("%-40s %-15s %-20s%n", name, size, time);
             }
             
             System.out.println("------------------------------------------------------------------------------------");

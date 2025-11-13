@@ -85,20 +85,26 @@ public class ClientRuntimeContext {
 
         // 配置文件监听器
         try {
-            Path syncDir = Paths.get(config.getSyncDir());
+            Path syncDir = Paths.get(config.getSyncDir()).toAbsolutePath().normalize();
             File syncDirFile = syncDir.toFile();
             
             // 确保同步目录存在
             if (!syncDirFile.exists()) {
+                log.info("同步目录不存在，尝试创建: {}", syncDirFile.getAbsolutePath());
                 if (!syncDirFile.mkdirs()) {
                     log.error("无法创建同步目录: {}", syncDirFile.getAbsolutePath());
                     throw new RuntimeException("同步目录创建失败");
                 }
             }
             
+            if (!syncDirFile.isDirectory()) {
+                log.error("同步目录路径不是一个有效的目录: {}", syncDirFile.getAbsolutePath());
+                throw new RuntimeException("同步目录不是一个有效的目录");
+            }
+            
             // 设置监听目录
             directoryWatcher.setWatchDir(syncDir);
-            log.info("已设置监听目录: {}", syncDir);
+            log.info("已设置监听目录: {} (绝对路径: {})", syncDir, syncDirFile.getAbsolutePath());
         } catch (IOException e) {
             log.error("配置文件监听器失败", e);
             throw new RuntimeException("配置文件监听器失败", e);

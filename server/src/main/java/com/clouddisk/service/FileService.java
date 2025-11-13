@@ -56,7 +56,8 @@ public class FileService {
      */
     @Transactional(readOnly = true)
     public List<FileMetadataDto> listFiles(String userId) {
-        return fileRepository.findAllByUser_UserId(userId).stream()
+        UUID uuid = UUID.fromString(userId);
+        return fileRepository.findAllByUser_UserId(uuid).stream()
                 .sorted(Comparator.comparing(FileEntity::isDirectory).reversed()
                         .thenComparing(FileEntity::getDirectoryPath)
                         .thenComparing(FileEntity::getName))
@@ -80,7 +81,8 @@ public class FileService {
             throw new BusinessException(ErrorCode.VALIDATION_ERROR, "文件名不能为空");
         }
 
-        fileRepository.findByUser_UserIdAndDirectoryPathAndName(userId, normalizedPath, fileName)
+        UUID uuid = UUID.fromString(userId);
+        fileRepository.findByUser_UserIdAndDirectoryPathAndName(uuid, normalizedPath, fileName)
                 .filter(FileEntity::isDirectory)
                 .ifPresent(existingDir -> {
                     throw new BusinessException(ErrorCode.VALIDATION_ERROR, "同名目录已存在");
@@ -103,7 +105,7 @@ public class FileService {
             storageKey = storageService.storeFile(file, keyPrefix, true);
         }
 
-        FileEntity entity = fileRepository.findByUser_UserIdAndDirectoryPathAndName(userId, normalizedPath, fileName)
+        FileEntity entity = fileRepository.findByUser_UserIdAndDirectoryPathAndName(uuid, normalizedPath, fileName)
                 .orElse(null);
 
         if (entity == null) {
@@ -145,7 +147,8 @@ public class FileService {
      */
     @Transactional(readOnly = true)
     public ResponseEntity<Resource> download(String fileId, String userId) {
-        FileEntity file = fileRepository.findByFileIdAndUser_UserId(fileId, userId)
+        UUID uuid = UUID.fromString(userId);
+        FileEntity file = fileRepository.findByFileIdAndUser_UserId(fileId, uuid)
                 .orElseThrow(() -> new BusinessException(ErrorCode.FILE_NOT_FOUND));
         if (file.isDirectory()) {
             throw new BusinessException(ErrorCode.VALIDATION_ERROR, "目录无法下载");
@@ -168,7 +171,8 @@ public class FileService {
      */
     @Transactional
     public void delete(String fileId, String userId) {
-        FileEntity file = fileRepository.findByFileIdAndUser_UserId(fileId, userId)
+        UUID uuid = UUID.fromString(userId);
+        FileEntity file = fileRepository.findByFileIdAndUser_UserId(fileId, uuid)
                 .orElseThrow(() -> new BusinessException(ErrorCode.FILE_NOT_FOUND));
         if (!file.isDirectory() && file.getStorageKey() != null) {
             boolean shared = fileRepository.findAll().stream()
@@ -188,12 +192,13 @@ public class FileService {
     public FileMetadataDto createDirectory(String directoryPath, String name, String userId) {
         User user = userRepository.findById(userId)
                 .orElseThrow(() -> new BusinessException(ErrorCode.USER_NOT_FOUND));
+        UUID uuid = UUID.fromString(userId);
         String normalizedParent = normalizePath(directoryPath);
         String safeName = name.trim();
         if (!StringUtils.hasText(safeName)) {
             throw new BusinessException(ErrorCode.VALIDATION_ERROR, "目录名不能为空");
         }
-        fileRepository.findByUser_UserIdAndDirectoryPathAndName(userId, normalizedParent, safeName)
+        fileRepository.findByUser_UserIdAndDirectoryPathAndName(uuid, normalizedParent, safeName)
                 .ifPresent(existing -> {
                     throw new BusinessException(ErrorCode.DIRECTORY_ALREADY_EXISTS);
                 });

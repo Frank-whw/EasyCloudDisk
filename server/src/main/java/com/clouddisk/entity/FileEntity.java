@@ -1,6 +1,7 @@
 package com.clouddisk.entity;
 
 import jakarta.persistence.*;
+import lombok.Data;
 
 import java.time.Instant;
 import java.util.UUID;
@@ -9,6 +10,7 @@ import java.util.UUID;
  * 文件实体，记录用户文件与对应的存储信息。
  */
 @Entity
+@Data
 @Table(name = "files", indexes = {
         @Index(name = "idx_files_user_path", columnList = "user_id,directory_path,name", unique = true),
         @Index(name = "idx_files_hash", columnList = "content_hash")
@@ -16,6 +18,7 @@ import java.util.UUID;
 public class FileEntity {
 
     @Id
+    @GeneratedValue(strategy = GenerationType.UUID)
     @Column(name = "file_id", nullable = false, updatable = false, length = 36)
     private String fileId;
 
@@ -53,9 +56,6 @@ public class FileEntity {
     @PrePersist
     public void prePersist() {
         Instant now = Instant.now();
-        if (fileId == null) {
-            fileId = UUID.randomUUID().toString();
-        }
         createdAt = now;
         updatedAt = now;
     }
@@ -65,91 +65,4 @@ public class FileEntity {
         updatedAt = Instant.now();
     }
 
-    public String getFileId() {
-        return fileId;
-    }
-
-    public void setFileId(String fileId) {
-        this.fileId = fileId;
-    }
-
-    public User getUser() {
-        return user;
-    }
-
-    public void setUser(User user) {
-        this.user = user;
-    }
-
-    public String getName() {
-        return name;
-    }
-
-    public void setName(String name) {
-        this.name = name;
-    }
-
-    public String getDirectoryPath() {
-        return directoryPath;
-    }
-
-    public void setDirectoryPath(String directoryPath) {
-        this.directoryPath = directoryPath;
-    }
-
-    public String getStorageKey() {
-        return storageKey;
-    }
-
-    public void setStorageKey(String storageKey) {
-        this.storageKey = storageKey;
-    }
-
-    public long getFileSize() {
-        return fileSize;
-    }
-
-    public void setFileSize(long fileSize) {
-        this.fileSize = fileSize;
-    }
-
-    public String getContentHash() {
-        return contentHash;
-    }
-
-    public void setContentHash(String contentHash) {
-        this.contentHash = contentHash;
-    }
-
-    public boolean isDirectory() {
-        return directory;
-    }
-
-    public void setDirectory(boolean directory) {
-        this.directory = directory;
-    }
-
-    public int getVersion() {
-        return version;
-    }
-
-    public void setVersion(int version) {
-        this.version = version;
-    }
-
-    public Instant getCreatedAt() {
-        return createdAt;
-    }
-
-    public void setCreatedAt(Instant createdAt) {
-        this.createdAt = createdAt;
-    }
-
-    public Instant getUpdatedAt() {
-        return updatedAt;
-    }
-
-    public void setUpdatedAt(Instant updatedAt) {
-        this.updatedAt = updatedAt;
-    }
 }

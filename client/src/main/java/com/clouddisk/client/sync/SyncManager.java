@@ -23,17 +23,17 @@ public class SyncManager {
     /**
      * 目录监听器，用于监听本地文件系统的变化
      */
-    private DirectoryWatcher directoryWatcher;
+    private final DirectoryWatcher directoryWatcher;
     
     /**
      * 线程池，用于执行异步任务
      */
-    private ExecutorService executorService;
+    private final ExecutorService executorService;
     
     /**
      * 冲突解决器，用于处理本地和远程文件之间的冲突
      */
-    private ConflictResolver conflictResolver;
+    private final ConflictResolver conflictResolver;
     
     /**
      * 文件API客户端，用于与服务器进行文件操作
@@ -48,12 +48,12 @@ public class SyncManager {
     /**
      * 压缩服务，用于文件压缩和解压缩
      */
-    private CompressionService compressionService;
+    private final CompressionService compressionService;
     
     /**
      * 哈希计算器，用于计算文件哈希值
      */
-    private HashCalculator hashCalculator;
+    private final HashCalculator hashCalculator;
     
     /**
      * 标识是否正在监听文件变化
