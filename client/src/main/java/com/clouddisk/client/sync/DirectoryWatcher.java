@@ -89,6 +89,7 @@ public class DirectoryWatcher {
                 StandardWatchEventKinds.ENTRY_CREATE,
                 StandardWatchEventKinds.ENTRY_MODIFY,
                 StandardWatchEventKinds.ENTRY_DELETE);
+            log.info("已设置监听目录: {}", watchDir.toString());
         }
     }
     

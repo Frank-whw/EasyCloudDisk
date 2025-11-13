@@ -56,8 +56,7 @@ public class FileService {
      */
     @Transactional(readOnly = true)
     public List<FileMetadataDto> listFiles(String userId) {
-        UUID uuid = UUID.fromString(userId);
-        return fileRepository.findAllByUser_UserId(uuid).stream()
+        return fileRepository.findAllByUserId(userId).stream()
                 .sorted(Comparator.comparing(FileEntity::isDirectory).reversed()
                         .thenComparing(FileEntity::getDirectoryPath)
                         .thenComparing(FileEntity::getName))
@@ -81,8 +80,7 @@ public class FileService {
             throw new BusinessException(ErrorCode.VALIDATION_ERROR, "文件名不能为空");
         }
 
-        UUID uuid = UUID.fromString(userId);
-        fileRepository.findByUser_UserIdAndDirectoryPathAndName(uuid, normalizedPath, fileName)
+        fileRepository.findByUserIdAndDirectoryPathAndName(userId, normalizedPath, fileName)
                 .filter(FileEntity::isDirectory)
                 .ifPresent(existingDir -> {
                     throw new BusinessException(ErrorCode.VALIDATION_ERROR, "同名目录已存在");
@@ -105,19 +103,19 @@ public class FileService {
             storageKey = storageService.storeFile(file, keyPrefix, true);
         }
 
-        FileEntity entity = fileRepository.findByUser_UserIdAndDirectoryPathAndName(uuid, normalizedPath, fileName)
+        FileEntity entity = fileRepository.findByUserIdAndDirectoryPathAndName(userId, normalizedPath, fileName)
                 .orElse(null);
 
         if (entity == null) {
             entity = new FileEntity();
-            entity.setUser(user);
+            entity.setUserId(userId);
             entity.setDirectory(false);
             entity.setDirectoryPath(normalizedPath);
             entity.setName(fileName);
             entity.setVersion(1);
         } else {
             FileVersion version = new FileVersion();
-            version.setFile(entity);
+            version.setFileId(entity.getFileId());
             version.setVersionNumber(entity.getVersion());
             version.setStorageKey(entity.getStorageKey());
             version.setFileSize(entity.getFileSize());
@@ -127,15 +125,15 @@ public class FileService {
         }
 
         entity.setStorageKey(storageKey);
-        entity.setFileSize(bytes.length);
+        entity.setFileSize((long) bytes.length);
         entity.setContentHash(hash);
         fileRepository.save(entity);
 
         FileVersion latest = new FileVersion();
-        latest.setFile(entity);
+        latest.setFileId(entity.getFileId());
         latest.setVersionNumber(entity.getVersion());
         latest.setStorageKey(storageKey);
-        latest.setFileSize(bytes.length);
+        latest.setFileSize((long) bytes.length);
         latest.setContentHash(hash);
         fileVersionRepository.save(latest);
 
@@ -147,8 +145,7 @@ public class FileService {
      */
     @Transactional(readOnly = true)
     public ResponseEntity<Resource> download(String fileId, String userId) {
-        UUID uuid = UUID.fromString(userId);
-        FileEntity file = fileRepository.findByFileIdAndUser_UserId(fileId, uuid)
+        FileEntity file = fileRepository.findByFileIdAndUserId(fileId, userId)
                 .orElseThrow(() -> new BusinessException(ErrorCode.FILE_NOT_FOUND));
         if (file.isDirectory()) {
             throw new BusinessException(ErrorCode.VALIDATION_ERROR, "目录无法下载");
@@ -171,8 +168,7 @@ public class FileService {
      */
     @Transactional
     public void delete(String fileId, String userId) {
-        UUID uuid = UUID.fromString(userId);
-        FileEntity file = fileRepository.findByFileIdAndUser_UserId(fileId, uuid)
+        FileEntity file = fileRepository.findByFileIdAndUserId(fileId, userId)
                 .orElseThrow(() -> new BusinessException(ErrorCode.FILE_NOT_FOUND));
         if (!file.isDirectory() && file.getStorageKey() != null) {
             boolean shared = fileRepository.findAll().stream()
@@ -181,7 +177,7 @@ public class FileService {
                 storageService.deleteFile(file.getStorageKey());
             }
         }
-        fileVersionRepository.deleteAll(fileVersionRepository.findAllByFileOrderByVersionNumberDesc(file));
+        fileVersionRepository.deleteAll(fileVersionRepository.findAllByFileIdOrderByVersionNumberDesc(file.getFileId()));
         fileRepository.delete(file);
     }
 
@@ -192,23 +188,22 @@ public class FileService {
     public FileMetadataDto createDirectory(String directoryPath, String name, String userId) {
         User user = userRepository.findById(userId)
                 .orElseThrow(() -> new BusinessException(ErrorCode.USER_NOT_FOUND));
-        UUID uuid = UUID.fromString(userId);
         String normalizedParent = normalizePath(directoryPath);
         String safeName = name.trim();
         if (!StringUtils.hasText(safeName)) {
             throw new BusinessException(ErrorCode.VALIDATION_ERROR, "目录名不能为空");
         }
-        fileRepository.findByUser_UserIdAndDirectoryPathAndName(uuid, normalizedParent, safeName)
+        fileRepository.findByUserIdAndDirectoryPathAndName(userId, normalizedParent, safeName)
                 .ifPresent(existing -> {
                     throw new BusinessException(ErrorCode.DIRECTORY_ALREADY_EXISTS);
                 });
         FileEntity entity = new FileEntity();
-        entity.setUser(user);
+        entity.setUserId(userId);
         entity.setDirectory(true);
         entity.setDirectoryPath(normalizedParent);
         entity.setName(safeName);
         entity.setVersion(1);
-        entity.setFileSize(0);
+        entity.setFileSize(0L);
         fileRepository.save(entity);
         return toDto(entity);
     }

@@ -3,15 +3,12 @@ package com.clouddisk.entity;
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
 import jakarta.persistence.Id;
-import jakarta.persistence.GeneratedValue;
-import jakarta.persistence.GenerationType;
 import jakarta.persistence.PrePersist;
 import jakarta.persistence.PreUpdate;
 import jakarta.persistence.Table;
 import lombok.Data;
 
 import java.time.Instant;
-import java.util.UUID;
 
 /**
  * 用户实体，存储账号与认证相关信息。
@@ -22,7 +19,6 @@ import java.util.UUID;
 public class User {
 
     @Id
-    @GeneratedValue(strategy = GenerationType.UUID)
     @Column(name = "user_id", nullable = false, updatable = false, length = 36)
     private String userId;
 
@@ -33,7 +29,7 @@ public class User {
     private String passwordHash;
 
     @Column(name = "token_version", nullable = false)
-    private int tokenVersion = 0;
+    private int tokenVersion;
 
     @Column(name = "created_at", nullable = false, updatable = false)
     private Instant createdAt;
@@ -47,12 +43,16 @@ public class User {
         Instant now = Instant.now();
         createdAt = now;
         updatedAt = now;
-        email = email.toLowerCase();
+        if (email != null) {
+            email = email.toLowerCase();
+        }
     }
 
     @PreUpdate
     public void preUpdate() {
         updatedAt = Instant.now();
-        email = email.toLowerCase();
+        if (email != null) {
+            email = email.toLowerCase();
+        }
     }
 }

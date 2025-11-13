@@ -100,15 +100,6 @@ public class SyncManager {
             // 设置事件监听器
             directoryWatcher.setEventListener(this::handleLocalEvent);
             
-            // 在后台线程中启动监听
-            executorService.submit(() -> {
-                try {
-                    directoryWatcher.start();
-                } catch (Exception e) {
-                    log.error("文件监听启动失败", e);
-                }
-            });
-            
             log.info("文件监听服务已启动");
         }
     }

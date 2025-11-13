@@ -53,26 +53,32 @@ public class ClientApplication implements CommandLineRunner {
     @Override
     public void run(String... args) throws Exception {
         log.info("启动云盘客户端...");
-        
+
         try {
             // 1. 初始化上下文
             initializeContext();
-            
+
             // 2. 用户认证
             if (!authenticateUser()) {
-                log.error("用户认证失败，程序退出");
-                System.exit(1);
+                log.error("用户认证失败");
+                // 给用户重新配置的机会
+                if (!handleAuthFailure()) {
+                    System.exit(1);
+                }
             }
-            
+
             // 3. 启动同步循环
             startSyncLoop();
             
-            // 4. 注册关闭钩子
+            // 4. 启动文件监听（在认证成功后启动）
+            context.getSyncManager().startWatching();
+
+            // 5. 注册关闭钩子
             registerShutdownHook();
-            
-            // 5. 启动交互式命令行界面
+
+            // 6. 启动交互式命令行界面
             startInteractiveMode();
-            
+
         } catch (Exception e) {
             log.error("客户端启动失败", e);
             shutdown();
@@ -87,16 +93,13 @@ public class ClientApplication implements CommandLineRunner {
      */
     private void initializeContext() {
         log.info("初始化运行时上下文...");
-        
+
         context.initialize();
-        
+
         // 初始化API客户端（使用配置的服务器地址）
         authApiClient = new AuthApiClient(context.getConfig().getServerUrl());
         fileApiClient = new FileApiClient(context.getConfig().getServerUrl(), context.getHttpClient());
-        
-        // 启动文件监听
-        context.getSyncManager().startWatching();
-        
+
         log.info("运行时上下文初始化完成");
     }
 
@@ -107,16 +110,16 @@ public class ClientApplication implements CommandLineRunner {
      */
     private boolean authenticateUser() {
         log.info("开始用户认证...");
-        
+
         try {
             String email = context.getConfig().getEmail();
             String password = context.getConfig().getPassword();
-            
+
             if (email == null || password == null) {
                 log.info("未找到配置文件中的认证信息，使用交互式登录");
                 return interactiveLogin();
             }
-            
+
             // 尝试自动登录
             String token = authApiClient.login(email, password);
             if (token != null) {
@@ -128,9 +131,11 @@ public class ClientApplication implements CommandLineRunner {
                 log.warn("自动登录失败，尝试交互式登录");
                 return interactiveLogin();
             }
-            
+
         } catch (Exception e) {
-            log.error("认证过程发生错误", e);
+            log.error("认证过程发生错误: {}", e.getMessage());
+            System.out.println("连接服务器失败，请检查网络连接或服务器地址配置");
+            System.out.println("当前配置的服务器地址: " + context.getConfig().getServerUrl());
             return false;
         }
     }
@@ -143,23 +148,23 @@ public class ClientApplication implements CommandLineRunner {
     private boolean interactiveLogin() {
         Scanner scanner = new Scanner(System.in);
         int maxAttempts = 3;
-        
+
         for (int attempt = 0; attempt < maxAttempts; attempt++) {
             System.out.println("\n=== 云盘客户端登录 ===");
             System.out.print("请选择操作 (1-登录, 2-注册): ");
-            
+
             try {
                 int choice = Integer.parseInt(scanner.nextLine());
-                
+
                 System.out.print("邮箱: ");
                 String email = scanner.nextLine();
-                
+
                 // 密码输入循环（最多3次）
                 String password = null;
                 for (int i = 0; i < 3; i++) {
                     System.out.print("密码: ");
                     password = scanner.nextLine();
-                    
+
                     // 本地校验密码长度
                     if (password.length() < 6) {
                         System.out.println("密码长度不能少于6位，请重新输入");
@@ -170,7 +175,7 @@ public class ClientApplication implements CommandLineRunner {
                         break;
                     }
                 }
-                
+
                 // 如果3次密码输入都不合规，回到选择操作
                 if (password == null || password.length() < 6) {
                     System.out.println("密码输入失败次数过多");
@@ -181,7 +186,7 @@ public class ClientApplication implements CommandLineRunner {
                         return false;
                     }
                 }
-                
+
                 String token;
                 if (choice == 2) {
                     // 注册
@@ -200,7 +205,7 @@ public class ClientApplication implements CommandLineRunner {
                     // 登录
                     token = authApiClient.login(email, password);
                 }
-                
+
                 if (token != null) {
                     context.setToken(token);
                     context.setUserId(email);
@@ -217,7 +222,7 @@ public class ClientApplication implements CommandLineRunner {
                         return false;
                     }
                 }
-                
+
             } catch (NumberFormatException e) {
                 System.out.println("输入无效，请输入 1 或 2");
                 if (attempt < maxAttempts - 1) {
@@ -236,8 +241,51 @@ public class ClientApplication implements CommandLineRunner {
                 }
             }
         }
-        
+
         return false;
+    }
+
+    /**
+     * 处理认证失败的情况。
+     * <p>
+     * 提供用户重新配置认证信息的机会。
+     */
+    private boolean handleAuthFailure() {
+        Scanner scanner = new Scanner(System.in);
+
+        System.out.println("\n=== 认证失败 ===");
+        System.out.println("请检查配置文件中的认证信息，或重新输入认证信息。");
+        System.out.println("可用操作:");
+        System.out.println("  1 - 重新输入认证信息");
+        System.out.println("  2 - 退出程序");
+        System.out.println();
+
+        while (true) {
+            System.out.print("> ");
+            String input = scanner.nextLine().trim();
+
+            if (input.isEmpty()) {
+                continue;
+            }
+
+            String[] parts = input.split("\\s+");
+            String command = parts[0].toLowerCase();
+
+            try {
+                switch (command) {
+                    case "1":
+                        return interactiveLogin();
+                    case "2":
+                        return false;
+                    default:
+                        System.out.println("未知命令: " + command);
+                        System.out.println("输入 '1' 或 '2' 选择操作");
+                }
+            } catch (Exception e) {
+                log.error("执行命令失败: " + command, e);
+                System.out.println("执行命令失败: " + e.getMessage());
+            }
+        }
     }
 
     /**
@@ -245,14 +293,14 @@ public class ClientApplication implements CommandLineRunner {
      */
     private void startSyncLoop() {
         log.info("启动文件同步服务...");
-        
+
         if (!context.getConfig().isEnableAutoSync()) {
             log.info("自动同步已禁用");
             return;
         }
-        
+
         syncExecutor = Executors.newSingleThreadScheduledExecutor();
-        
+
         // 立即执行一次同步
         syncExecutor.execute(() -> {
             try {
@@ -261,7 +309,7 @@ public class ClientApplication implements CommandLineRunner {
                 log.error("初始同步失败", e);
             }
         });
-        
+
         // 定期执行同步（每30秒）
         syncExecutor.scheduleWithFixedDelay(() -> {
             try {
@@ -272,7 +320,7 @@ public class ClientApplication implements CommandLineRunner {
                 log.error("定期同步失败", e);
             }
         }, 30, 30, TimeUnit.SECONDS);
-        
+
         log.info("文件同步服务已启动");
     }
 
@@ -282,16 +330,16 @@ public class ClientApplication implements CommandLineRunner {
     private void performSync() {
         try {
             log.debug("开始文件同步...");
-            
+
             if (context != null && context.getSyncManager() != null) {
                 // 同步远程变更
                 context.getSyncManager().synchronizeRemoteChanges();
             } else {
                 log.warn("同步管理器未初始化");
             }
-            
+
             log.debug("文件同步完成");
-            
+
         } catch (Exception e) {
             log.error("同步操作失败", e);
         }
@@ -302,7 +350,7 @@ public class ClientApplication implements CommandLineRunner {
      */
     private void startInteractiveMode() {
         Scanner scanner = new Scanner(System.in);
-        
+
         System.out.println("\n=== 云盘客户端已启动 ===");
         System.out.println("可用命令:");
         System.out.println("  sync - 手动同步文件");
@@ -314,18 +362,18 @@ public class ClientApplication implements CommandLineRunner {
         System.out.println("  help - 显示帮助");
         System.out.println("  exit - 退出程序");
         System.out.println();
-        
+
         while (isRunning) {
             System.out.print("> ");
             String input = scanner.nextLine().trim();
-            
+
             if (input.isEmpty()) {
                 continue;
             }
-            
+
             String[] parts = input.split("\\s+");
             String command = parts[0].toLowerCase();
-            
+
             try {
                 switch (command) {
                     case "sync":
@@ -381,28 +429,28 @@ public class ClientApplication implements CommandLineRunner {
     private void listFiles() {
         try {
             System.out.println("\n=== 云盘文件 ===");
-            
+
             List<com.clouddisk.client.model.FileResponse> files = context.getFileApiClient().listFiles();
-            
+
             if (files == null || files.isEmpty()) {
                 System.out.println("云盘中还没有文件,可以使用 upload 命令上传文件\n");
                 return;
             }
-            
+
             System.out.printf("%-40s %-15s %-20s%n", "文件名", "大小", "更新时间");
             System.out.println("------------------------------------------------------------------------------------");
-            
+
             for (com.clouddisk.client.model.FileResponse file : files) {
                 String name = file.getName() != null ? file.getName() : "未知";
                 String size = file.getFormattedSize();
                 String time = file.getDisplayTime();
-                
+
                 System.out.printf("%-40s %-15s %-20s%n", name, size, time);
             }
-            
+
             System.out.println("------------------------------------------------------------------------------------");
             System.out.println("总计: " + files.size() + " 个文件\n");
-            
+
         } catch (Exception e) {
             log.error("列出文件失败", e);
             System.out.println("列出文件失败: " + e.getMessage());
@@ -422,7 +470,7 @@ public class ClientApplication implements CommandLineRunner {
                 return;
             }
             context.getSyncManager().handleLocalEvent(
-                new FileEvent(FileEvent.EventType.CREATE, filePath, null)
+                    new FileEvent(FileEvent.EventType.CREATE, filePath, null)
             );
             System.out.println("文件上传任务已提交: " + filename);
         } catch (Exception e) {
@@ -461,7 +509,7 @@ public class ClientApplication implements CommandLineRunner {
 
             // 调用下载接口
             boolean ok = context.getFileApiClient().downloadFile(
-                target.getFileId().toString(), targetPath);
+                    target.getFileId().toString(), targetPath);
             if (ok) {
                 System.out.println("下载成功: " + targetPath.toAbsolutePath());
             } else {
@@ -553,7 +601,7 @@ public class ClientApplication implements CommandLineRunner {
     private void shutdown() {
         log.info("正在关闭客户端...");
         isRunning = false;
-        
+
         if (syncExecutor != null && !syncExecutor.isShutdown()) {
             syncExecutor.shutdown();
             try {
@@ -565,11 +613,11 @@ public class ClientApplication implements CommandLineRunner {
                 Thread.currentThread().interrupt();
             }
         }
-        
+
         if (context != null) {
             context.shutdown();
         }
-        
+
         log.info("客户端已关闭");
         System.exit(0);
     }

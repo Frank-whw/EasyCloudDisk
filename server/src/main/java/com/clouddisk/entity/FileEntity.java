@@ -4,7 +4,6 @@ import jakarta.persistence.*;
 import lombok.Data;
 
 import java.time.Instant;
-import java.util.UUID;
 
 /**
  * 文件实体，记录用户文件与对应的存储信息。
@@ -18,13 +17,11 @@ import java.util.UUID;
 public class FileEntity {
 
     @Id
-    @GeneratedValue(strategy = GenerationType.UUID)
     @Column(name = "file_id", nullable = false, updatable = false, length = 36)
     private String fileId;
 
-    @ManyToOne(fetch = FetchType.LAZY)
-    @JoinColumn(name = "user_id", nullable = false)
-    private User user;
+    @Column(name = "user_id", nullable = false, length = 36)
+    private String userId;
 
     @Column(name = "name", nullable = false)
     private String name;
@@ -36,7 +33,7 @@ public class FileEntity {
     private String storageKey;
 
     @Column(name = "file_size")
-    private long fileSize;
+    private Long fileSize;
 
     @Column(name = "content_hash")
     private String contentHash;

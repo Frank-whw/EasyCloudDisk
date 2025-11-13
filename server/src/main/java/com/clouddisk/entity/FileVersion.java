@@ -4,7 +4,6 @@ import jakarta.persistence.*;
 import lombok.Data;
 
 import java.time.Instant;
-import java.util.UUID;
 
 /**
  * 文件版本实体，用于记录历史版本的存储信息。
@@ -15,13 +14,11 @@ import java.util.UUID;
 public class FileVersion {
 
     @Id
-    @GeneratedValue(strategy = GenerationType.UUID)
     @Column(name = "version_id", nullable = false, updatable = false, length = 36)
     private String versionId;
 
-    @ManyToOne(fetch = FetchType.LAZY)
-    @JoinColumn(name = "file_id", nullable = false)
-    private FileEntity file;
+    @Column(name = "file_id", nullable = false, length = 36)
+    private String fileId;
 
     @Column(name = "version_number", nullable = false)
     private int versionNumber;

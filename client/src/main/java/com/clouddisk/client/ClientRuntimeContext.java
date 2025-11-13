@@ -104,7 +104,6 @@ public class ClientRuntimeContext {
             
             // 设置监听目录
             directoryWatcher.setWatchDir(syncDir);
-            log.info("已设置监听目录: {} (绝对路径: {})", syncDir, syncDirFile.getAbsolutePath());
         } catch (IOException e) {
             log.error("配置文件监听器失败", e);
             throw new RuntimeException("配置文件监听器失败", e);
