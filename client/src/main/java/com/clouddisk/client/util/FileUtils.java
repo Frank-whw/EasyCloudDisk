@@ -5,6 +5,9 @@ import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
 
+/**
+ * 客户端文件处理辅助工具，提供常见的文件校验、临时文件创建等能力。
+ */
 public class FileUtils {
     /**
      * 检查文件是否存在、可读、可写

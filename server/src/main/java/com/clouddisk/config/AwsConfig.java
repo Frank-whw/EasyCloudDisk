@@ -15,10 +15,16 @@ import software.amazon.awssdk.services.s3.S3Configuration;
 
 import java.net.URI;
 
+/**
+ * AWS 客户端配置，负责构建复用的 HTTP 客户端与 S3 客户端实例。
+ */
 @Configuration
 @EnableConfigurationProperties(AwsProperties.class)
 public class AwsConfig {
 
+    /**
+     * 构建供 S3 客户端复用的 HTTP 客户端。
+     */
     @Bean
     public SdkHttpClient s3HttpClient(AwsProperties properties) {
         return ApacheHttpClient.builder()
@@ -28,6 +34,9 @@ public class AwsConfig {
                 .build();
     }
 
+    /**
+     * 根据配置创建 {@link S3Client} 实例。
+     */
     @Bean
     public S3Client s3Client(AwsProperties properties, SdkHttpClient httpClient) {
         AwsBasicCredentials credentials = AwsBasicCredentials.create(

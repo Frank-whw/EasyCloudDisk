@@ -16,6 +16,9 @@ import java.util.Date;
 import java.util.Map;
 import java.util.Optional;
 
+/**
+ * JWT 令牌工具类，负责生成、解析与校验访问令牌及刷新令牌。
+ */
 @Component
 public class JwtTokenProvider {
 
@@ -42,6 +45,9 @@ public class JwtTokenProvider {
         this.refreshTokenValidityMs = Duration.ofDays(7).toMillis();
     }
 
+    /**
+     * 生成访问令牌。
+     */
     public String generateToken(String subject, Map<String, Object> claims) {
         Instant now = Instant.now();
         return Jwts.builder()
@@ -53,6 +59,9 @@ public class JwtTokenProvider {
                 .compact();
     }
 
+    /**
+     * 生成刷新令牌。
+     */
     public String generateRefreshToken(String subject) {
         Instant now = Instant.now();
         return Jwts.builder()
@@ -63,6 +72,9 @@ public class JwtTokenProvider {
                 .compact();
     }
 
+    /**
+     * 校验令牌是否有效。
+     */
     public boolean validateToken(String token) {
         try {
             parseClaims(token);
@@ -73,6 +85,9 @@ public class JwtTokenProvider {
         }
     }
 
+    /**
+     * 从令牌中提取主体信息。
+     */
     public Optional<String> getSubject(String token) {
         try {
             Claims claims = parseClaims(token);
@@ -83,6 +98,9 @@ public class JwtTokenProvider {
         }
     }
 
+    /**
+     * 解析令牌并返回 {@link Claims}。
+     */
     public Claims parseClaims(String token) {
         return Jwts.parser()
                 .verifyWith(accessKey)
@@ -91,6 +109,9 @@ public class JwtTokenProvider {
                 .getPayload();
     }
 
+    /**
+     * 从请求头中提取 JWT 字符串。
+     */
     public String resolveToken(jakarta.servlet.http.HttpServletRequest request) {
         String bearer = request.getHeader("Authorization");
         if (bearer != null && bearer.startsWith("Bearer ")) {

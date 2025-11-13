@@ -11,6 +11,9 @@ import java.util.concurrent.Executors;
 import java.util.concurrent.TimeUnit;
 import java.util.function.Consumer;
 
+/**
+ * 基于 {@link WatchService} 的目录监听器，用于捕获本地文件系统变化并回调上层处理逻辑。
+ */
 @Slf4j
 @Component
 public class DirectoryWatcher {
@@ -30,7 +33,7 @@ public class DirectoryWatcher {
     }
     
     /**
-     * 启动监听
+     * 启动监听，将监听任务提交至后台线程。
      */
     public void start() {
         if (!watching && watchService != null) {
@@ -43,7 +46,7 @@ public class DirectoryWatcher {
     }
     
     /**
-     * 停止监听
+     * 停止监听并释放底层资源。
      */
     public void stop() {
         if (watching) {
@@ -98,7 +101,7 @@ public class DirectoryWatcher {
     }
     
     /**
-     * 监听目录变化的核心方法
+     * 监听目录变化的核心方法，从 {@link WatchService} 轮询事件并转发给监听器。
      */
     private void watchDirectory() {
         if (watchService == null || watchDir == null) {

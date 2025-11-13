@@ -2,6 +2,9 @@ package com.clouddisk.dto;
 
 import jakarta.validation.constraints.NotBlank;
 
+/**
+ * 新建目录请求载荷。
+ */
 public class DirectoryRequest {
 
     @NotBlank(message = "目录路径不能为空")

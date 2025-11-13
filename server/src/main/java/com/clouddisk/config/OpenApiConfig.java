@@ -8,9 +8,15 @@ import io.swagger.v3.oas.models.security.SecurityScheme;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 
+/**
+ * OpenAPI 文档配置，定义接口文档信息及 JWT 安全方案。
+ */
 @Configuration
 public class OpenApiConfig {
 
+    /**
+     * 配置 OpenAPI 核心元数据及安全要求。
+     */
     @Bean
     public OpenAPI openAPI() {
         SecurityScheme bearerScheme = new SecurityScheme()

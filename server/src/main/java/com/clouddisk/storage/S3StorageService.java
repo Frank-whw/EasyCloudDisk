@@ -21,6 +21,9 @@ import java.io.InputStream;
 import java.time.Instant;
 import java.util.UUID;
 
+/**
+ * 基于 AWS S3 的文件存储实现。
+ */
 @Service
 public class S3StorageService implements StorageService {
 
@@ -34,6 +37,9 @@ public class S3StorageService implements StorageService {
         this.properties = properties;
     }
 
+    /**
+     * 上传文件到 S3，根据需要自动压缩并附加元数据。
+     */
     @Override
     public String storeFile(MultipartFile file, String keyPrefix, boolean compress) {
         try {
@@ -81,6 +87,9 @@ public class S3StorageService implements StorageService {
         }
     }
 
+    /**
+     * 下载文件并根据标记选择性解压。
+     */
     @Override
     public InputStream loadFile(String storageKey, boolean decompress) {
         try {
@@ -99,6 +108,9 @@ public class S3StorageService implements StorageService {
         }
     }
 
+    /**
+     * 删除指定对象。
+     */
     @Override
     public void deleteFile(String storageKey) {
         try {
@@ -113,6 +125,9 @@ public class S3StorageService implements StorageService {
         }
     }
 
+    /**
+     * 判断对象是否存在。
+     */
     @Override
     public boolean exists(String storageKey) {
         try {
@@ -130,6 +145,9 @@ public class S3StorageService implements StorageService {
         }
     }
 
+    /**
+     * 确保存储桶存在。
+     */
     @Override
     public void ensureBucket() {
         String bucketName = properties.getS3().getBucketName();
@@ -150,6 +168,9 @@ public class S3StorageService implements StorageService {
         }
     }
 
+    /**
+     * 简单的健康检查。
+     */
     @Override
     public boolean isHealthy() {
         try {

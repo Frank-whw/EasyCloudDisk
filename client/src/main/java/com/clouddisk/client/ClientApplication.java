@@ -20,14 +20,25 @@ import java.util.concurrent.Executors;
 import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.TimeUnit;
 
+/**
+ * 客户端入口程序。
+ * <p>
+ * 负责初始化运行时上下文、执行认证、调度同步任务并提供交互式命令行界面。
+ * 所有对外部系统的调用都统一在此处进行编排，确保生命周期管理清晰。
+ */
 @Slf4j
 @SpringBootApplication
 public class ClientApplication implements CommandLineRunner {
 
-    private ClientRuntimeContext context;
+    /** 运行时上下文，封装了配置、HTTP 客户端和同步组件。 */
+    private final ClientRuntimeContext context;
+    /** 用户认证 REST 客户端。 */
     private AuthApiClient authApiClient;
+    /** 文件操作 REST 客户端。 */
     private FileApiClient fileApiClient;
+    /** 定期执行同步任务的调度线程池。 */
     private ScheduledExecutorService syncExecutor;
+    /** 控制交互式命令循环是否继续执行。 */
     private volatile boolean isRunning = true;
 
     @Autowired
@@ -70,7 +81,9 @@ public class ClientApplication implements CommandLineRunner {
     }
 
     /**
-     * 初始化运行时上下文
+     * 初始化运行时上下文。
+     * <p>
+     * 完成配置校验、REST 客户端构建以及目录监听器和同步管理器的准备工作。
      */
     private void initializeContext() {
         log.info("初始化运行时上下文...");
@@ -88,7 +101,9 @@ public class ClientApplication implements CommandLineRunner {
     }
 
     /**
-     * 用户认证
+     * 根据配置或用户输入执行用户认证。
+     *
+     * @return 当登录成功并设置访问令牌时返回 {@code true}。
      */
     private boolean authenticateUser() {
         log.info("开始用户认证...");
@@ -121,7 +136,9 @@ public class ClientApplication implements CommandLineRunner {
     }
 
     /**
-     * 交互式登录
+     * 交互式登录。
+     * <p>
+     * 支持用户选择登录或注册，并限制重试次数，防止无限循环。
      */
     private boolean interactiveLogin() {
         Scanner scanner = new Scanner(System.in);
@@ -224,7 +241,7 @@ public class ClientApplication implements CommandLineRunner {
     }
 
     /**
-     * 启动文件同步循环
+     * 启动文件同步循环，负责调度初始同步和周期性同步任务。
      */
     private void startSyncLoop() {
         log.info("启动文件同步服务...");
@@ -260,7 +277,7 @@ public class ClientApplication implements CommandLineRunner {
     }
 
     /**
-     * 执行同步操作
+     * 执行同步操作，委托 {@link com.clouddisk.client.sync.SyncManager} 完成实际同步工作。
      */
     private void performSync() {
         try {
@@ -281,7 +298,7 @@ public class ClientApplication implements CommandLineRunner {
     }
 
     /**
-     * 启动交互式命令行界面
+     * 启动交互式命令行界面并处理用户输入的命令。
      */
     private void startInteractiveMode() {
         Scanner scanner = new Scanner(System.in);
@@ -359,7 +376,7 @@ public class ClientApplication implements CommandLineRunner {
     }
 
     /**
-     * 列出文件
+     * 列出文件。
      */
     private void listFiles() {
         try {
@@ -393,7 +410,7 @@ public class ClientApplication implements CommandLineRunner {
     }
 
     /**
-     * 上传文件
+     * 上传文件。
      */
     private void uploadFile(String filename) {
         try {
@@ -415,7 +432,7 @@ public class ClientApplication implements CommandLineRunner {
     }
 
     /**
-     * 下载文件
+     * 下载文件到本地同步目录。
      */
     private void downloadFile(String filename) {
         try {
@@ -457,7 +474,7 @@ public class ClientApplication implements CommandLineRunner {
     }
 
     /**
-     * 删除文件
+     * 删除文件。
      */
     private void deleteFile(String filename) {
         try {
@@ -494,7 +511,7 @@ public class ClientApplication implements CommandLineRunner {
     }
 
     /**
-     * 显示状态
+     * 显示状态。
      */
     private void showStatus() {
         System.out.println("=== 客户端状态 ===");
@@ -506,7 +523,7 @@ public class ClientApplication implements CommandLineRunner {
     }
 
     /**
-     * 显示帮助
+     * 显示帮助。
      */
     private void showHelp() {
         System.out.println("=== 帮助信息 ===");
@@ -521,7 +538,7 @@ public class ClientApplication implements CommandLineRunner {
     }
 
     /**
-     * 注册关闭钩子
+     * 注册关闭钩子。
      */
     private void registerShutdownHook() {
         Runtime.getRuntime().addShutdownHook(new Thread(() -> {
@@ -531,7 +548,7 @@ public class ClientApplication implements CommandLineRunner {
     }
 
     /**
-     * 关闭客户端
+     * 关闭客户端并释放资源。
      */
     private void shutdown() {
         log.info("正在关闭客户端...");

@@ -1,5 +1,8 @@
 package com.clouddisk.dto;
 
+/**
+ * 登录成功后返回的用户凭证信息。
+ */
 public class AuthResponse {
     private String userId;
     private String email;

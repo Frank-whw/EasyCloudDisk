@@ -6,6 +6,9 @@ import org.springframework.validation.annotation.Validated;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.NotNull;
 
+/**
+ * AWS 相关配置项的集中定义，支持自动绑定并通过 JSR-303 进行校验。
+ */
 @ConfigurationProperties(prefix = "aws")
 @Validated
 public class AwsProperties {
@@ -56,6 +59,9 @@ public class AwsProperties {
         return http;
     }
 
+    /**
+     * S3 存储相关子配置。
+     */
     public static class S3Properties {
         @NotBlank
         private String bucketName;
@@ -96,6 +102,9 @@ public class AwsProperties {
         }
     }
 
+    /**
+     * S3 分片上传相关配置。
+     */
     public static class Multipart {
         private int partSizeMb = 8;
         private int maxRetries = 3;
@@ -117,6 +126,9 @@ public class AwsProperties {
         }
     }
 
+    /**
+     * S3 客户端使用的 HTTP 连接配置。
+     */
     public static class HttpProperties {
         private int maxConnections = 64;
         private int connectionTimeoutMs = 10_000;

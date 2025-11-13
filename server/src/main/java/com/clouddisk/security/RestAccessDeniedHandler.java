@@ -14,6 +14,9 @@ import java.nio.charset.StandardCharsets;
 import java.util.HashMap;
 import java.util.Map;
 
+/**
+ * 已认证但无权限访问时的 JSON 响应处理器。
+ */
 @Component
 public class RestAccessDeniedHandler implements AccessDeniedHandler {
 

@@ -2,6 +2,9 @@ package com.clouddisk.dto;
 
 import java.time.Instant;
 
+/**
+ * 对外暴露的文件元数据视图对象。
+ */
 public class FileMetadataDto {
     private String fileId;
     private String name;

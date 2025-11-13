@@ -9,6 +9,9 @@ import java.io.File;
 import java.net.URI;
 import java.net.URISyntaxException;
 
+/**
+ * 客户端配置项封装类，对 {@code application.yml} 或环境变量中的配置进行集中校验与暴露。
+ */
 @Data
 @Component
 @ConfigurationProperties(prefix = "client")

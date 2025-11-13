@@ -5,6 +5,9 @@ import jakarta.persistence.*;
 import java.time.Instant;
 import java.util.UUID;
 
+/**
+ * 文件版本实体，用于记录历史版本的存储信息。
+ */
 @Entity
 @Table(name = "file_versions")
 public class FileVersion {

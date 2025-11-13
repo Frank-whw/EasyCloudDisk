@@ -16,6 +16,9 @@ import org.springframework.security.core.Authentication;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.web.bind.annotation.*;
 
+/**
+ * 认证相关接口，提供注册、登录、刷新令牌及注销能力。
+ */
 @RestController
 @RequestMapping("/auth")
 public class AuthController {
@@ -28,6 +31,9 @@ public class AuthController {
         this.userService = userService;
     }
 
+    /**
+     * 用户注册接口。
+     */
     @PostMapping("/register")
     public ResponseEntity<ApiResponse<AuthResponse>> register(@Valid @RequestBody RegisterRequest request) {
         log.info("Register request for {}", request.getEmail());
@@ -35,6 +41,9 @@ public class AuthController {
         return ResponseEntity.ok(ApiResponse.success("注册成功", ErrorCode.SUCCESS.name(), response));
     }
 
+    /**
+     * 用户登录接口。
+     */
     @PostMapping("/login")
     public ResponseEntity<ApiResponse<AuthResponse>> login(@Valid @RequestBody AuthRequest request) {
         log.info("Login attempt for {}", request.getEmail());
@@ -42,12 +51,18 @@ public class AuthController {
         return ResponseEntity.ok(ApiResponse.success("登录成功", ErrorCode.SUCCESS.name(), response));
     }
 
+    /**
+     * 使用刷新令牌换取新的访问令牌。
+     */
     @PostMapping("/refresh")
     public ResponseEntity<ApiResponse<AuthResponse>> refresh(@RequestParam("token") String refreshToken) {
         AuthResponse response = userService.refreshToken(refreshToken);
         return ResponseEntity.ok(ApiResponse.success("刷新成功", ErrorCode.SUCCESS.name(), response));
     }
 
+    /**
+     * 注销当前登录的用户。
+     */
     @PostMapping("/logout")
     public ResponseEntity<ApiResponse<Void>> logout() {
         Authentication authentication = SecurityContextHolder.getContext().getAuthentication();

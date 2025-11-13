@@ -1,5 +1,8 @@
 package com.clouddisk.exception;
 
+/**
+ * 系统统一错误码定义。
+ */
 public enum ErrorCode {
     SUCCESS("成功"),
     EMAIL_EXISTS("邮箱已存在"),

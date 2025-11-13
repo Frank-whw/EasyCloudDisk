@@ -10,6 +10,9 @@ import javax.sql.DataSource;
 import java.util.HashMap;
 import java.util.Map;
 
+/**
+ * 健康检查接口，汇总数据库和存储服务的状态。
+ */
 @RestController
 public class HealthController {
 
@@ -21,6 +24,9 @@ public class HealthController {
         this.storageService = storageService;
     }
 
+    /**
+     * 返回系统各项依赖的健康状态。
+     */
     @GetMapping("/health")
     public ResponseEntity<ApiResponse<Map<String, Object>>> health() {
         Map<String, Object> status = new HashMap<>();
@@ -30,6 +36,9 @@ public class HealthController {
         return ResponseEntity.ok(ApiResponse.success(status));
     }
 
+    /**
+     * 验证数据库连接是否可用。
+     */
     private boolean checkDatabase() {
         try {
             dataSource.getConnection().close();

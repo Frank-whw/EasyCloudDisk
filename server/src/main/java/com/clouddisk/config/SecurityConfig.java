@@ -26,6 +26,9 @@ import java.util.Arrays;
 import java.util.List;
 import java.util.stream.Collectors;
 
+/**
+ * Spring Security 核心配置，负责配置 JWT 认证、CORS 以及常规安全拦截策略。
+ */
 @Configuration
 @EnableWebSecurity
 @EnableMethodSecurity
@@ -49,6 +52,9 @@ public class SecurityConfig {
         this.allowCredentials = allowCredentials;
     }
 
+    /**
+     * 定义系统的安全过滤器链，接入 JWT 过滤器并配置授权规则。
+     */
     @Bean
     public SecurityFilterChain securityFilterChain(HttpSecurity http) throws Exception {
         http
@@ -71,16 +77,25 @@ public class SecurityConfig {
         return http.build();
     }
 
+    /**
+     * 使用 BCrypt 作为密码编码器。
+     */
     @Bean
     public PasswordEncoder passwordEncoder() {
         return new BCryptPasswordEncoder();
     }
 
+    /**
+     * 从 Spring Security 提供的配置中暴露 {@link AuthenticationManager}。
+     */
     @Bean
     public AuthenticationManager authenticationManager(AuthenticationConfiguration configuration) throws Exception {
         return configuration.getAuthenticationManager();
     }
 
+    /**
+     * 根据配置构建 CORS 规则，支持通配符与凭证控制。
+     */
     @Bean
     public CorsConfigurationSource corsConfigurationSource() {
         CorsConfiguration configuration = new CorsConfiguration();

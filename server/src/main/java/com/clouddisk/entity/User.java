@@ -10,6 +10,9 @@ import jakarta.persistence.Table;
 import java.time.Instant;
 import java.util.UUID;
 
+/**
+ * 用户实体，存储账号与认证相关信息。
+ */
 @Entity
 @Table(name = "users")
 public class User {

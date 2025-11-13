@@ -4,6 +4,9 @@ import lombok.extern.slf4j.Slf4j;
 
 import java.util.function.Supplier;
 
+/**
+ * 通用的重试模板，封装指数退避的重试逻辑以提升网络调用的鲁棒性。
+ */
 @Slf4j
 public class RetryTemplate {
     

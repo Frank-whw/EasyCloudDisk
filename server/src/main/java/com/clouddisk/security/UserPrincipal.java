@@ -8,6 +8,9 @@ import org.springframework.security.core.userdetails.UserDetails;
 import java.util.Collection;
 import java.util.List;
 
+/**
+ * Spring Security 使用的用户信息包装类。
+ */
 public class UserPrincipal implements UserDetails {
     private final String userId;
     private final String email;

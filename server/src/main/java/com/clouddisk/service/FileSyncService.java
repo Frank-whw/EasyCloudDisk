@@ -10,6 +10,9 @@ import java.time.Instant;
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
 
+/**
+ * 使用 SSE 推送文件变更通知的服务。
+ */
 @Service
 public class FileSyncService {
 
@@ -17,6 +20,9 @@ public class FileSyncService {
 
     private final Map<String, SseEmitter> emitters = new ConcurrentHashMap<>();
 
+    /**
+     * 注册 SSE 连接并发送初始消息。
+     */
     public SseEmitter register(String userId) {
         SseEmitter emitter = new SseEmitter(0L);
         emitters.put(userId, emitter);
@@ -30,6 +36,9 @@ public class FileSyncService {
         return emitter;
     }
 
+    /**
+     * 向指定用户推送文件变更事件。
+     */
     public void notifyChange(String userId, Object payload) {
         SseEmitter emitter = emitters.get(userId);
         if (emitter != null) {

@@ -30,6 +30,9 @@ import java.util.Optional;
 import java.util.UUID;
 import java.util.stream.Collectors;
 
+/**
+ * 文件业务逻辑服务，处理上传、下载、删除以及目录操作。
+ */
 @Service
 public class FileService {
 
@@ -48,6 +51,9 @@ public class FileService {
         this.storageService = storageService;
     }
 
+    /**
+     * 列出用户文件。
+     */
     @Transactional(readOnly = true)
     public List<FileMetadataDto> listFiles(String userId) {
         return fileRepository.findAllByUser_UserId(userId).stream()
@@ -58,6 +64,9 @@ public class FileService {
                 .collect(Collectors.toList());
     }
 
+    /**
+     * 上传文件并维护版本记录。
+     */
     @Transactional
     public FileMetadataDto upload(MultipartFile file, String directoryPath, String userId) {
         if (file.isEmpty()) {
@@ -131,6 +140,9 @@ public class FileService {
         return toDto(entity);
     }
 
+    /**
+     * 下载文件。
+     */
     @Transactional(readOnly = true)
     public ResponseEntity<Resource> download(String fileId, String userId) {
         FileEntity file = fileRepository.findByFileIdAndUser_UserId(fileId, userId)
@@ -151,6 +163,9 @@ public class FileService {
                 .body(resource);
     }
 
+    /**
+     * 删除文件或目录，并根据共享情况决定是否移除底层对象。
+     */
     @Transactional
     public void delete(String fileId, String userId) {
         FileEntity file = fileRepository.findByFileIdAndUser_UserId(fileId, userId)
@@ -166,6 +181,9 @@ public class FileService {
         fileRepository.delete(file);
     }
 
+    /**
+     * 创建目录。
+     */
     @Transactional
     public FileMetadataDto createDirectory(String directoryPath, String name, String userId) {
         User user = userRepository.findById(userId)
@@ -203,6 +221,9 @@ public class FileService {
         return dto;
     }
 
+    /**
+     * 标准化目录路径，统一斜杠并确保以根路径开头。
+     */
     private String normalizePath(String path) {
         if (!StringUtils.hasText(path)) {
             return "/";
