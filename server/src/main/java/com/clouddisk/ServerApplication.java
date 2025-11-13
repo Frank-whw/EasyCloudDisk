@@ -10,6 +10,9 @@ import org.springframework.context.annotation.Bean;
 
 import org.springframework.cache.annotation.EnableCaching;
 
+/**
+ * 服务端应用入口，负责启动 Spring Boot 并执行必要的初始化逻辑。
+ */
 @SpringBootApplication
 @EnableCaching
 public class ServerApplication {
@@ -21,6 +24,9 @@ public class ServerApplication {
         log.info("CloudDisk server started successfully.");
     }
 
+    /**
+     * 启动后验证底层存储桶是否存在的初始化任务。
+     */
     @Bean
     CommandLineRunner storageInitializer(StorageService storageService) {
         return args -> {

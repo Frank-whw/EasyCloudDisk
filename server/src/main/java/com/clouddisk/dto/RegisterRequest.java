@@ -4,6 +4,9 @@ import jakarta.validation.constraints.Email;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.Size;
 
+/**
+ * 用户注册请求载荷。
+ */
 public class RegisterRequest {
 
     @Email(message = "邮箱格式不正确")

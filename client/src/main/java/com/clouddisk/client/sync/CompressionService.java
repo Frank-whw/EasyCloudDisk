@@ -12,12 +12,13 @@ import java.util.zip.ZipEntry;
 import java.util.zip.ZipInputStream;
 import java.util.zip.ZipOutputStream;
 
+/**
+ * 负责对本地文件进行压缩与解压缩，供同步流程上传或还原文件使用。
+ */
 public class CompressionService {
     
     /**
-     * 压缩源文件
-     * @param source 源文件路径
-     * @return 压缩后的字节数组
+     * 将指定文件压缩为 ZIP 格式的二进制数组。
      */
     public byte[] compress(Path source) throws IOException {
         FileUtils.checkFile(source);
@@ -41,30 +42,31 @@ public class CompressionService {
     }
     
     /**
-     * 解压数据到目标文件
-     * @param payload 压缩的数据
-     * @param target 目标路径
+     * 将压缩后的字节数组解压到目标路径。
      */
-    public void decompress(byte[] payload, Path target) throws  IOException{
-        // check the agruments
-        if(payload == null || payload.length == 0){
+    public void decompress(byte[] payload, Path target) throws IOException {
+        if (payload == null || payload.length == 0) {
             throw new IllegalArgumentException("payload cannot be null or empty");
         }
-        if(target == null){
+        if (target == null) {
             throw new IllegalArgumentException("target cannot be null");
         }
-        // check the target file
-        FileUtils.checkFile(target);
-        // create a temp file to store the decompressed data
+
+        // 确保目标目录存在
+        Path parent = target.getParent();
+        if (parent != null) {
+            Files.createDirectories(parent);
+        }
+
         Path tempPath = FileUtils.createTempFile("decompressed", ".zip");
-        try{
+        try {
             Files.write(tempPath, payload);
-            try(FileInputStream fis = new FileInputStream(tempPath.toFile());
-                ZipInputStream zis = new ZipInputStream(fis)) {
+            try (FileInputStream fis = new FileInputStream(tempPath.toFile());
+                 ZipInputStream zis = new ZipInputStream(fis)) {
 
                 ZipEntry entry = zis.getNextEntry();
-                if (entry != null){
-                    try(FileOutputStream fos = new FileOutputStream(target.toFile())){
+                if (entry != null) {
+                    try (FileOutputStream fos = new FileOutputStream(target.toFile())) {
                         byte[] buffer = new byte[1024];
                         int length;
                         while ((length = zis.read(buffer)) > 0) {
@@ -75,7 +77,7 @@ public class CompressionService {
                 }
 
             }
-        }finally {
+        } finally {
             FileUtils.deleteFile(tempPath.toFile());
         }
     }

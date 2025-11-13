@@ -21,6 +21,11 @@ import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.util.concurrent.TimeUnit;
 
+/**
+ * 客户端运行时上下文，集中管理配置、HTTP 客户端、同步管理器等共享组件。
+ * <p>
+ * 该类在应用启动时完成初始化，并提供统一的生命周期管理入口，确保资源使用安全可控。
+ */
 @Data
 @Slf4j
 @Component
@@ -54,7 +59,9 @@ public class ClientRuntimeContext {
     private FileApiClient fileApiClient; // 文件API客户端
 
     /**
-     * 初始化运行时上下文
+     * 初始化运行时上下文。
+     * <p>
+     * 负责验证基础配置、构造 REST 客户端并准备好目录监听器和同步管理器。
      */
     public void initialize() {
         log.info("初始化运行时上下文...");
@@ -101,7 +108,9 @@ public class ClientRuntimeContext {
     }
     
     /**
-     * 关闭并清理资源
+     * 关闭并清理资源。
+     * <p>
+     * 包括关闭 HTTP 客户端、停止目录监听以及释放同步管理器等资源。
      */
     public void shutdown() {
         log.info("关闭运行时上下文资源...");

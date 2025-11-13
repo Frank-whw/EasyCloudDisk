@@ -2,6 +2,9 @@ package com.clouddisk.client.http;
 
 import com.clouddisk.client.model.ApiResponse;
 
+/**
+ * 通用的 API 响应解包工具，用于根据服务端的统一返回结构提取数据或抛出对应异常。
+ */
 public class ApiResponseHandler {
     /**
      * 解包API响应

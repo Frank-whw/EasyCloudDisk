@@ -6,6 +6,9 @@ import lombok.NoArgsConstructor;
 
 import java.nio.file.Path;
 
+/**
+ * 上传文件时客户端内部使用的请求对象。
+ */
 @Data
 @AllArgsConstructor
 @NoArgsConstructor

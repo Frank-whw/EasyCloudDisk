@@ -19,6 +19,9 @@ import org.springframework.security.core.userdetails.UserDetails;
 
 import java.io.IOException;
 
+/**
+ * JWT 认证过滤器，负责从请求中解析令牌并建立安全上下文。
+ */
 @Component
 public class JwtAuthenticationFilter extends OncePerRequestFilter {
 

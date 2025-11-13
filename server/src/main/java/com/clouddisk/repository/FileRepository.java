@@ -7,6 +7,9 @@ import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
 
+/**
+ * 文件实体的 JPA 仓储接口。
+ */
 public interface FileRepository extends JpaRepository<FileEntity, String> {
     List<FileEntity> findAllByUser_UserId(UUID userId);
 

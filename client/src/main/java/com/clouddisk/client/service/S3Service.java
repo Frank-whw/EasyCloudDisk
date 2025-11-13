@@ -29,6 +29,9 @@ import java.util.List;
 import java.time.Duration;
 import java.net.URI;
 
+/**
+ * 封装与 AWS S3 交互的所有操作，包括上传、下载、删除和列出对象。
+ */
 @Slf4j
 @Service
 public class S3Service {
@@ -42,6 +45,9 @@ public class S3Service {
         this.clientProperties = clientProperties;
     }
     
+    /**
+     * 初始化 S3 客户端，在 Spring 构建 Bean 后执行。
+     */
     @PostConstruct
     public void initialize() {
         // 初始化 Bucket 名称（配置优先，其次环境变量）
@@ -84,9 +90,7 @@ public class S3Service {
     }
     
     /**
-     * 上传文件到S3
-     * @param request 文件上传请求
-     * @return 上传是否成功
+     * 上传文件到 S3。
      */
     public boolean uploadFile(FileUploadRequest request) {
         return RetryTemplate.executeWithRetry(() -> {
@@ -185,10 +189,7 @@ public class S3Service {
     }
     
     /**
-     * 从S3下载文件
-     * @param key S3对象键
-     * @param target 目标路径
-     * @return 下载是否成功
+     * 从 S3 下载文件到本地。
      */
     public boolean downloadFile(String key, Path target) {
         return RetryTemplate.executeWithRetry(() -> {
@@ -214,9 +215,7 @@ public class S3Service {
     }
     
     /**
-     * 删除S3中的文件
-     * @param key S3对象键
-     * @return 删除是否成功
+     * 删除 S3 中的对象。
      */
     public boolean deleteFile(String key) {
         return RetryTemplate.executeWithRetry(() -> {
@@ -238,8 +237,7 @@ public class S3Service {
     }
     
     /**
-     * 列出S3中的所有文件
-     * @return 文件键列表
+     * 列出 S3 中的所有对象键。
      */
     public List<String> listFiles() {
         return RetryTemplate.executeWithRetry(() -> {
@@ -265,9 +263,7 @@ public class S3Service {
     }
     
     /**
-     * 生成S3对象的key（基于内容哈希，确保唯一性）
-     * @param request 文件上传请求
-     * @return S3 key
+     * 根据内容哈希生成唯一的 S3 对象键。
      */
     private String generateS3Key(FileUploadRequest request) {
         String contentHash = request.getContentHash();

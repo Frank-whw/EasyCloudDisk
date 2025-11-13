@@ -5,6 +5,9 @@ import jakarta.persistence.*;
 import java.time.Instant;
 import java.util.UUID;
 
+/**
+ * 文件实体，记录用户文件与对应的存储信息。
+ */
 @Entity
 @Table(name = "files", indexes = {
         @Index(name = "idx_files_user_path", columnList = "user_id,directory_path,name", unique = true),

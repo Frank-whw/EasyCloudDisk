@@ -4,6 +4,9 @@ import lombok.AllArgsConstructor;
 import lombok.Data;
 import lombok.NoArgsConstructor;
 
+/**
+ * 本地缓存的文件元数据，与服务端的存储结构保持一致。
+ */
 @Data
 @NoArgsConstructor
 @AllArgsConstructor

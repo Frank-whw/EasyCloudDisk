@@ -17,6 +17,9 @@ import com.clouddisk.client.util.RetryTemplate;
 import java.io.IOException;
 import java.nio.charset.StandardCharsets;
 
+/**
+ * 认证相关 REST 客户端，封装登录、注册等 HTTP 调用。
+ */
 @Slf4j
 public class AuthApiClient {
     // 服务器基础URL，例如 "http://ec2-54-95-61-230.ap-northeast-1.compute.amazonaws.com:8080"
@@ -37,7 +40,7 @@ public class AuthApiClient {
     }
 
     /**
-     * 发送登录请求
+     * 发送登录请求并返回访问令牌。
      */
     public String login(String email, String password) {
         return RetryTemplate.executeWithRetry(() -> {
@@ -57,10 +60,11 @@ public class AuthApiClient {
     }
 
     /**
-     * 用户注册
-     * @param email 邮箱
-     * @param password 密码
-     * @return 注册是否成功
+     * 用户注册。
+     *
+     * @param email    用户邮箱。
+     * @param password 用户密码。
+     * @return 注册是否成功。
      */
     public boolean register(String email, String password) {
         try {
@@ -77,12 +81,10 @@ public class AuthApiClient {
     }
 
     /**
-     * 发送认证请求
-     * @param endpoint 请求端点
-     * @param request 请求数据
-     * @return 认证响应
-     * @throws IOException IO异常
-     * @throws ParseException 解析异常
+     * 发送认证请求。
+     *
+     * @param endpoint REST 端点。
+     * @param request  请求体。
      */
     private AuthResponse sendAuthRequest(String endpoint, AuthRequest request) throws IOException, ParseException {
         // 创建一个 HTTP POST 请求对象，指定完整的 URL
@@ -111,11 +113,7 @@ public class AuthApiClient {
     }
 
     /**
-     * 处理认证响应
-     * @param response HTTP响应
-     * @return 认证响应
-     * @throws IOException IO异常
-     * @throws ParseException 解析异常
+     * 解析认证响应并根据状态码抛出适当异常。
      */
     private AuthResponse handleAuthResponse(ClassicHttpResponse response) throws IOException, ParseException {
         String jsonResponse = EntityUtils.toString(response.getEntity());

@@ -13,12 +13,20 @@ import org.springframework.context.annotation.Configuration;
 
 import java.util.concurrent.TimeUnit;
 
+/**
+ * 客户端 Spring 配置类。
+ * <p>
+ * 提供共享的 HTTP 客户端实例，确保与服务器及 S3 通信时的连接、超时和重试策略统一。
+ */
 @Configuration
 @RequiredArgsConstructor
 public class ClientConfig {
     
     private final ClientProperties clientProperties;
     
+    /**
+     * 构建配置完善的 {@link CloseableHttpClient}，供 REST 与 S3 调用复用。
+     */
     @Bean
     public CloseableHttpClient httpClient() {
         // 连接池配置 - 与S3配置保持一致
@@ -43,7 +51,8 @@ public class ClientConfig {
         return HttpClients.custom()
                 .setConnectionManager(connectionManager)
                 .setDefaultRequestConfig(requestConfig)
-                .setRetryStrategy(new DefaultHttpRequestRetryStrategy(clientProperties.getS3MaxRetries(), TimeValue.ofSeconds(1L)))
+                .setRetryStrategy(new DefaultHttpRequestRetryStrategy(
+                        clientProperties.getS3MaxRetries(), TimeValue.ofSeconds(1L)))
                 .build();
     }
 }
