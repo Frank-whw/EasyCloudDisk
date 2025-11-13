@@ -5,13 +5,14 @@ import org.springframework.data.jpa.repository.JpaRepository;
 
 import java.util.List;
 import java.util.Optional;
+import java.util.UUID;
 
 public interface FileRepository extends JpaRepository<FileEntity, String> {
-    List<FileEntity> findAllByUser_UserId(String userId);
+    List<FileEntity> findAllByUser_UserId(UUID userId);
 
-    Optional<FileEntity> findByFileIdAndUser_UserId(String fileId, String userId);
+    Optional<FileEntity> findByFileIdAndUser_UserId(String fileId, UUID userId);
 
-    Optional<FileEntity> findByUser_UserIdAndDirectoryPathAndName(String userId, String directoryPath, String name);
+    Optional<FileEntity> findByUser_UserIdAndDirectoryPathAndName(UUID userId, String directoryPath, String name);
 
     Optional<FileEntity> findFirstByContentHash(String hash);
 }
