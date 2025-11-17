@@ -37,6 +37,9 @@ public class FileVersion {
 
     @PrePersist
     public void prePersist() {
+        if (versionId == null) {
+            versionId = java.util.UUID.randomUUID().toString();
+        }
         createdAt = Instant.now();
     }
 

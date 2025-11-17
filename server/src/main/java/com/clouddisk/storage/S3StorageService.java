@@ -6,6 +6,7 @@ import com.clouddisk.exception.ErrorCode;
 import org.apache.commons.codec.digest.DigestUtils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.stereotype.Service;
 import org.springframework.util.StringUtils;
 import org.springframework.web.multipart.MultipartFile;
@@ -25,6 +26,7 @@ import java.util.UUID;
  * 基于 AWS S3 的文件存储实现。
  */
 @Service
+@ConditionalOnProperty(name = "storage.type", havingValue = "s3", matchIfMissing = true)
 public class S3StorageService implements StorageService {
 
     private static final Logger log = LoggerFactory.getLogger(S3StorageService.class);
@@ -83,6 +85,42 @@ public class S3StorageService implements StorageService {
             return storageKey;
         } catch (IOException | AwsServiceException ex) {
             log.error("Failed to upload file to S3", ex);
+            throw new BusinessException(ErrorCode.STORAGE_ERROR, "S3 上传失败", ex);
+        }
+    }
+
+    /**
+     * 直接存储字节数组(用于块级存储)。
+     */
+    @Override
+    public String storeBytes(byte[] data, String keyPrefix, String filename, boolean alreadyCompressed) {
+        try {
+            String normalizedPrefix = keyPrefix == null ? "" : keyPrefix.replaceAll("/+", "/");
+            if (normalizedPrefix.startsWith("/")) {
+                normalizedPrefix = normalizedPrefix.substring(1);
+            }
+            if (normalizedPrefix.endsWith("/")) {
+                normalizedPrefix = normalizedPrefix.substring(0, normalizedPrefix.length() - 1);
+            }
+            String storageKey = (normalizedPrefix.isEmpty() ? "" : normalizedPrefix + "/") + filename;
+
+            PutObjectRequest.Builder requestBuilder = PutObjectRequest.builder()
+                    .bucket(properties.getS3().getBucketName())
+                    .key(storageKey)
+                    .contentLength((long) data.length)
+                    .metadata(java.util.Map.of(
+                            "compressed", Boolean.toString(alreadyCompressed)
+                    ));
+            
+            if (alreadyCompressed) {
+                requestBuilder.contentEncoding("gzip");
+            }
+
+            s3Client.putObject(requestBuilder.build(), RequestBody.fromBytes(data));
+            log.debug("Uploaded chunk to S3: {}", storageKey);
+            return storageKey;
+        } catch (AwsServiceException ex) {
+            log.error("Failed to upload bytes to S3", ex);
             throw new BusinessException(ErrorCode.STORAGE_ERROR, "S3 上传失败", ex);
         }
     }

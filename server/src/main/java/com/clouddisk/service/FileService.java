@@ -3,7 +3,6 @@ package com.clouddisk.service;
 import com.clouddisk.dto.FileMetadataDto;
 import com.clouddisk.entity.FileEntity;
 import com.clouddisk.entity.FileVersion;
-import com.clouddisk.entity.User;
 import com.clouddisk.exception.BusinessException;
 import com.clouddisk.exception.ErrorCode;
 import com.clouddisk.repository.FileRepository;
@@ -26,8 +25,6 @@ import java.io.InputStream;
 import java.nio.charset.StandardCharsets;
 import java.util.Comparator;
 import java.util.List;
-import java.util.Optional;
-import java.util.UUID;
 import java.util.stream.Collectors;
 
 /**
@@ -40,15 +37,18 @@ public class FileService {
     private final FileVersionRepository fileVersionRepository;
     private final UserRepository userRepository;
     private final StorageService storageService;
+    private final ChunkService chunkService;
 
     public FileService(FileRepository fileRepository,
                        FileVersionRepository fileVersionRepository,
                        UserRepository userRepository,
-                       StorageService storageService) {
+                       StorageService storageService,
+                       ChunkService chunkService) {
         this.fileRepository = fileRepository;
         this.fileVersionRepository = fileVersionRepository;
         this.userRepository = userRepository;
         this.storageService = storageService;
+        this.chunkService = chunkService;
     }
 
     /**
@@ -65,14 +65,14 @@ public class FileService {
     }
 
     /**
-     * 上传文件并维护版本记录。
+     * 上传文件并维护版本记录(使用块级去重存储)。
      */
     @Transactional
     public FileMetadataDto upload(MultipartFile file, String directoryPath, String userId) {
         if (file.isEmpty()) {
             throw new BusinessException(ErrorCode.VALIDATION_ERROR, "文件不能为空");
         }
-        User user = userRepository.findById(userId)
+        userRepository.findById(userId)
                 .orElseThrow(() -> new BusinessException(ErrorCode.USER_NOT_FOUND));
         String normalizedPath = normalizePath(directoryPath);
         String fileName = file.getOriginalFilename();
@@ -94,19 +94,11 @@ public class FileService {
         }
         String hash = DigestUtils.sha256Hex(bytes);
 
-        Optional<FileEntity> duplicate = fileRepository.findFirstByContentHash(hash);
-        String storageKey;
-        String keyPrefix = (userId + normalizedPath).replaceAll("/+", "/");
-        if (duplicate.isPresent() && duplicate.get().getStorageKey() != null) {
-            storageKey = duplicate.get().getStorageKey();
-        } else {
-            storageKey = storageService.storeFile(file, keyPrefix, true);
-        }
-
         FileEntity entity = fileRepository.findByUserIdAndDirectoryPathAndName(userId, normalizedPath, fileName)
                 .orElse(null);
 
-        if (entity == null) {
+        boolean isNewFile = (entity == null);
+        if (isNewFile) {
             entity = new FileEntity();
             entity.setUserId(userId);
             entity.setDirectory(false);
@@ -114,6 +106,7 @@ public class FileService {
             entity.setName(fileName);
             entity.setVersion(1);
         } else {
+            // 保存旧版本
             FileVersion version = new FileVersion();
             version.setFileId(entity.getFileId());
             version.setVersionNumber(entity.getVersion());
@@ -124,15 +117,25 @@ public class FileService {
             entity.setVersion(entity.getVersion() + 1);
         }
 
-        entity.setStorageKey(storageKey);
+        entity.setStorageKey("chunked"); // 标记为分块存储
         entity.setFileSize((long) bytes.length);
         entity.setContentHash(hash);
         fileRepository.save(entity);
 
+        // 使用块级存储(自动去重+压缩)
+        chunkService.storeFileInChunks(
+                entity.getFileId(), 
+                entity.getVersion(), 
+                bytes, 
+                userId, 
+                true
+        );
+
+        // 保存当前版本信息
         FileVersion latest = new FileVersion();
         latest.setFileId(entity.getFileId());
         latest.setVersionNumber(entity.getVersion());
-        latest.setStorageKey(storageKey);
+        latest.setStorageKey("chunked");
         latest.setFileSize((long) bytes.length);
         latest.setContentHash(hash);
         fileVersionRepository.save(latest);
@@ -141,7 +144,7 @@ public class FileService {
     }
 
     /**
-     * 下载文件。
+     * 下载文件(支持块级存储)。
      */
     @Transactional(readOnly = true)
     public ResponseEntity<Resource> download(String fileId, String userId) {
@@ -150,7 +153,16 @@ public class FileService {
         if (file.isDirectory()) {
             throw new BusinessException(ErrorCode.VALIDATION_ERROR, "目录无法下载");
         }
-        InputStream stream = storageService.loadFile(file.getStorageKey(), true);
+        
+        InputStream stream;
+        if ("chunked".equals(file.getStorageKey())) {
+            // 从块重组文件
+            stream = chunkService.assembleFile(file.getFileId(), file.getVersion());
+        } else {
+            // 旧格式:直接从存储加载
+            stream = storageService.loadFile(file.getStorageKey(), true);
+        }
+        
         Resource resource = new InputStreamResource(stream);
         ContentDisposition contentDisposition = ContentDisposition.attachment()
                 .filename(file.getName(), StandardCharsets.UTF_8)
@@ -164,19 +176,27 @@ public class FileService {
     }
 
     /**
-     * 删除文件或目录，并根据共享情况决定是否移除底层对象。
+     * 删除文件或目录(支持块级存储)。
      */
     @Transactional
     public void delete(String fileId, String userId) {
         FileEntity file = fileRepository.findByFileIdAndUserId(fileId, userId)
                 .orElseThrow(() -> new BusinessException(ErrorCode.FILE_NOT_FOUND));
+        
         if (!file.isDirectory() && file.getStorageKey() != null) {
-            boolean shared = fileRepository.findAll().stream()
-                    .anyMatch(other -> !other.getFileId().equals(file.getFileId()) && file.getStorageKey().equals(other.getStorageKey()));
-            if (!shared) {
-                storageService.deleteFile(file.getStorageKey());
+            if ("chunked".equals(file.getStorageKey())) {
+                // 删除块存储(自动处理引用计数)
+                chunkService.deleteFileChunks(file.getFileId());
+            } else {
+                // 旧格式:检查共享后删除
+                boolean shared = fileRepository.findAll().stream()
+                        .anyMatch(other -> !other.getFileId().equals(file.getFileId()) && file.getStorageKey().equals(other.getStorageKey()));
+                if (!shared) {
+                    storageService.deleteFile(file.getStorageKey());
+                }
             }
         }
+        
         fileVersionRepository.deleteAll(fileVersionRepository.findAllByFileIdOrderByVersionNumberDesc(file.getFileId()));
         fileRepository.delete(file);
     }
@@ -186,7 +206,7 @@ public class FileService {
      */
     @Transactional
     public FileMetadataDto createDirectory(String directoryPath, String name, String userId) {
-        User user = userRepository.findById(userId)
+        userRepository.findById(userId)
                 .orElseThrow(() -> new BusinessException(ErrorCode.USER_NOT_FOUND));
         String normalizedParent = normalizePath(directoryPath);
         String safeName = name.trim();

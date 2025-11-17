@@ -7,8 +7,6 @@ import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 import jakarta.annotation.PostConstruct;
 import software.amazon.awssdk.auth.credentials.DefaultCredentialsProvider;
-import software.amazon.awssdk.auth.credentials.AwsBasicCredentials;
-import software.amazon.awssdk.auth.credentials.StaticCredentialsProvider;
 import software.amazon.awssdk.core.ResponseInputStream;
 import software.amazon.awssdk.core.sync.RequestBody;
 import software.amazon.awssdk.regions.Region;
@@ -18,9 +16,8 @@ import software.amazon.awssdk.services.s3.model.GetObjectResponse;
 import software.amazon.awssdk.http.apache.ApacheHttpClient;
 import software.amazon.awssdk.services.s3.S3ClientBuilder;
 import software.amazon.awssdk.services.s3.S3Configuration;
-import software.amazon.awssdk.core.retry.RetryPolicy;
+import software.amazon.awssdk.core.retry.RetryMode;
 
-import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.StandardOpenOption;
@@ -76,7 +73,10 @@ public class S3Service {
                         .pathStyleAccessEnabled(Boolean.TRUE.equals(clientProperties.getS3PathStyle()))
                         .build())
                 .httpClientBuilder(httpClientBuilder)
-                .overrideConfiguration(cfg -> cfg.retryPolicy(RetryPolicy.defaultRetryPolicy()));
+                .overrideConfiguration(cfg -> cfg
+                        .retryStrategy(RetryMode.STANDARD)
+                        .apiCallAttemptTimeout(Duration.ofSeconds(30))
+                        .apiCallTimeout(Duration.ofSeconds(60)));
 
         // 使用默认凭证链 - 简化配置，支持环境变量、IAM角色等
         builder.credentialsProvider(DefaultCredentialsProvider.builder().build());

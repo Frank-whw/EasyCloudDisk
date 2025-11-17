@@ -39,19 +39,24 @@ public class AwsConfig {
      */
     @Bean
     public S3Client s3Client(AwsProperties properties, SdkHttpClient httpClient) {
-        AwsBasicCredentials credentials = AwsBasicCredentials.create(
-                properties.getAccessKeyId(),
-                properties.getSecretAccessKey()
-        );
-
         S3Configuration.Builder s3ConfigBuilder = S3Configuration.builder()
                 .pathStyleAccessEnabled(properties.getS3().isPathStyle());
 
         S3ClientBuilder builder = S3Client.builder()
                 .httpClient(httpClient)
-                .credentialsProvider(StaticCredentialsProvider.create(credentials))
                 .region(Region.of(properties.getRegion()))
                 .serviceConfiguration(s3ConfigBuilder.build());
+
+        // 只有在明确配置了凭证时才使用静态凭证,否则使用默认凭证链
+        // 默认凭证链: EC2 IAM Role → 环境变量 → ~/.aws/credentials
+        String accessKeyId = properties.getAccessKeyId();
+        String secretAccessKey = properties.getSecretAccessKey();
+        if (accessKeyId != null && !accessKeyId.isEmpty() && !accessKeyId.equals("your-access-key-id") &&
+            secretAccessKey != null && !secretAccessKey.isEmpty() && !secretAccessKey.equals("your-secret-access-key")) {
+            AwsBasicCredentials credentials = AwsBasicCredentials.create(accessKeyId, secretAccessKey);
+            builder = builder.credentialsProvider(StaticCredentialsProvider.create(credentials));
+        }
+        // 否则不设置credentialsProvider,让SDK使用DefaultCredentialsProvider
 
         if (properties.getS3().getEndpoint() != null && !properties.getS3().getEndpoint().isBlank()) {
             builder = builder.endpointOverride(URI.create(properties.getS3().getEndpoint()));

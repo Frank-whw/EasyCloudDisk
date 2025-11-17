@@ -1,8 +1,6 @@
 package com.clouddisk.client;
 
-import com.clouddisk.client.config.ClientProperties;
 import com.clouddisk.client.http.AuthApiClient;
-import com.clouddisk.client.http.FileApiClient;
 
 import com.clouddisk.client.sync.FileEvent;
 import lombok.extern.slf4j.Slf4j;
@@ -11,7 +9,6 @@ import org.springframework.boot.CommandLineRunner;
 import org.springframework.boot.SpringApplication;
 import org.springframework.boot.autoconfigure.SpringBootApplication;
 
-import java.io.File;
 import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.util.List;
@@ -34,12 +31,12 @@ public class ClientApplication implements CommandLineRunner {
     private final ClientRuntimeContext context;
     /** 用户认证 REST 客户端。 */
     private AuthApiClient authApiClient;
-    /** 文件操作 REST 客户端。 */
-    private FileApiClient fileApiClient;
     /** 定期执行同步任务的调度线程池。 */
     private ScheduledExecutorService syncExecutor;
     /** 控制交互式命令循环是否继续执行。 */
     private volatile boolean isRunning = true;
+    /** 共享的 Scanner 实例，用于读取用户输入（不要关闭，会导致 System.in 关闭） */
+    private final Scanner scanner = new Scanner(System.in);
 
     @Autowired
     public ClientApplication(ClientRuntimeContext context) {
@@ -98,7 +95,7 @@ public class ClientApplication implements CommandLineRunner {
 
         // 初始化API客户端（使用配置的服务器地址）
         authApiClient = new AuthApiClient(context.getConfig().getServerUrl());
-        fileApiClient = new FileApiClient(context.getConfig().getServerUrl(), context.getHttpClient());
+        // FileApiClient 从 context 中获取，不需要单独初始化
 
         log.info("运行时上下文初始化完成");
     }
@@ -146,7 +143,6 @@ public class ClientApplication implements CommandLineRunner {
      * 支持用户选择登录或注册，并限制重试次数，防止无限循环。
      */
     private boolean interactiveLogin() {
-        Scanner scanner = new Scanner(System.in);
         int maxAttempts = 3;
 
         for (int attempt = 0; attempt < maxAttempts; attempt++) {
@@ -251,7 +247,6 @@ public class ClientApplication implements CommandLineRunner {
      * 提供用户重新配置认证信息的机会。
      */
     private boolean handleAuthFailure() {
-        Scanner scanner = new Scanner(System.in);
 
         System.out.println("\n=== 认证失败 ===");
         System.out.println("请检查配置文件中的认证信息，或重新输入认证信息。");
@@ -349,7 +344,6 @@ public class ClientApplication implements CommandLineRunner {
      * 启动交互式命令行界面并处理用户输入的命令。
      */
     private void startInteractiveMode() {
-        Scanner scanner = new Scanner(System.in);
 
         System.out.println("\n=== 云盘客户端已启动 ===");
         System.out.println("可用命令:");

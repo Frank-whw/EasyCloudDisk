@@ -9,6 +9,7 @@ import jakarta.persistence.Table;
 import lombok.Data;
 
 import java.time.Instant;
+import java.util.UUID;
 
 /**
  * 用户实体，存储账号与认证相关信息。
@@ -41,6 +42,9 @@ public class User {
     @PrePersist
     public void prePersist() {
         Instant now = Instant.now();
+        if (userId == null) {
+            userId = UUID.randomUUID().toString();
+        }
         createdAt = now;
         updatedAt = now;
         if (email != null) {

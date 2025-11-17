@@ -1,6 +1,5 @@
 package com.clouddisk.controller;
 
-import com.clouddisk.dto.ApiResponse;
 import com.clouddisk.storage.StorageService;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.GetMapping;
@@ -28,12 +27,12 @@ public class HealthController {
      * 返回系统各项依赖的健康状态。
      */
     @GetMapping("/health")
-    public ResponseEntity<ApiResponse<Map<String, Object>>> health() {
-        Map<String, Object> status = new HashMap<>();
-        status.put("database", checkDatabase());
-        status.put("storage", storageService.isHealthy());
-        status.put("status", "UP");
-        return ResponseEntity.ok(ApiResponse.success(status));
+    public ResponseEntity<Map<String, Object>> health() {
+        Map<String, Object> response = new HashMap<>();
+        response.put("status", "UP");
+        response.put("database", checkDatabase());
+        response.put("storage", storageService.isHealthy());
+        return ResponseEntity.ok(response);
     }
 
     /**

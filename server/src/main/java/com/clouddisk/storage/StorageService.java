@@ -10,6 +10,11 @@ import java.io.InputStream;
 public interface StorageService {
     String storeFile(MultipartFile file, String keyPrefix, boolean compress);
 
+    /**
+     * 直接存储字节数组(用于块级存储)。
+     */
+    String storeBytes(byte[] data, String keyPrefix, String filename, boolean alreadyCompressed);
+
     InputStream loadFile(String storageKey, boolean decompress);
 
     void deleteFile(String storageKey);

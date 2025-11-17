@@ -52,6 +52,9 @@ public class FileEntity {
 
     @PrePersist
     public void prePersist() {
+        if (fileId == null) {
+            fileId = java.util.UUID.randomUUID().toString();
+        }
         Instant now = Instant.now();
         createdAt = now;
         updatedAt = now;

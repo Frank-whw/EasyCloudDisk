@@ -1,11 +1,12 @@
 package com.clouddisk.controller;
 
-import com.clouddisk.dto.ApiResponse;
-import com.clouddisk.dto.DirectoryRequest;
-import com.clouddisk.dto.FileMetadataDto;
+import com.clouddisk.dto.*;
 import com.clouddisk.exception.BusinessException;
 import com.clouddisk.exception.ErrorCode;
 import com.clouddisk.security.UserPrincipal;
+import com.clouddisk.service.AdvancedUploadService;
+import com.clouddisk.service.DiffSyncService;
+import com.clouddisk.service.EncryptionService;
 import com.clouddisk.service.FileService;
 import com.clouddisk.service.FileSyncService;
 import jakarta.validation.Valid;
@@ -16,6 +17,7 @@ import org.springframework.web.bind.annotation.*;
 import org.springframework.web.multipart.MultipartFile;
 import org.springframework.web.servlet.mvc.method.annotation.SseEmitter;
 
+import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
@@ -28,10 +30,18 @@ public class FileController {
 
     private final FileService fileService;
     private final FileSyncService fileSyncService;
+    private final AdvancedUploadService advancedUploadService;
+    private final DiffSyncService diffSyncService;
+    private final EncryptionService encryptionService;
 
-    public FileController(FileService fileService, FileSyncService fileSyncService) {
+    public FileController(FileService fileService, FileSyncService fileSyncService, 
+                         AdvancedUploadService advancedUploadService, DiffSyncService diffSyncService,
+                         EncryptionService encryptionService) {
         this.fileService = fileService;
         this.fileSyncService = fileSyncService;
+        this.advancedUploadService = advancedUploadService;
+        this.diffSyncService = diffSyncService;
+        this.encryptionService = encryptionService;
     }
 
     /**
@@ -98,6 +108,168 @@ public class FileController {
     public SseEmitter sync(@AuthenticationPrincipal UserPrincipal user) {
         ensureUser(user);
         return fileSyncService.register(user.getUserId());
+    }
+
+    /**
+     * 检查文件是否可以秒传
+     */
+    @PostMapping("/quick-check")
+    public ResponseEntity<ApiResponse<Map<String, Boolean>>> quickCheck(
+            @AuthenticationPrincipal UserPrincipal user,
+            @RequestBody Map<String, String> request) {
+        ensureUser(user);
+        String hash = request.get("hash");
+        boolean canQuickUpload = advancedUploadService.checkQuickUpload(hash, user.getUserId());
+        return ResponseEntity.ok(ApiResponse.success(Map.of("canQuickUpload", canQuickUpload)));
+    }
+
+    /**
+     * 执行秒传
+     */
+    @PostMapping("/quick-upload")
+    public ResponseEntity<ApiResponse<FileMetadataDto>> quickUpload(
+            @AuthenticationPrincipal UserPrincipal user,
+            @Valid @RequestBody QuickUploadRequest request) {
+        ensureUser(user);
+        FileMetadataDto metadata = advancedUploadService.quickUpload(
+                request.getHash(),
+                request.getFileName(),
+                request.getPath(),
+                user.getUserId()
+        );
+        fileSyncService.notifyChange(user.getUserId(), Map.of("type", "quick-upload", "fileId", metadata.getFileId()));
+        return ResponseEntity.ok(ApiResponse.success("秒传成功", ErrorCode.SUCCESS.name(), metadata));
+    }
+
+    /**
+     * 初始化断点续传会话
+     */
+    @PostMapping("/resumable/init")
+    public ResponseEntity<ApiResponse<UploadSessionDto>> initResumableUpload(
+            @AuthenticationPrincipal UserPrincipal user,
+            @RequestBody Map<String, Object> request) {
+        ensureUser(user);
+        String fileName = (String) request.get("fileName");
+        String path = (String) request.get("path");
+        Long fileSize = Long.valueOf(request.get("fileSize").toString());
+        
+        UploadSessionDto session = advancedUploadService.initResumableUpload(fileName, path, fileSize, user.getUserId());
+        return ResponseEntity.ok(ApiResponse.success("会话创建成功", ErrorCode.SUCCESS.name(), session));
+    }
+
+    /**
+     * 上传单个分块
+     */
+    @PostMapping("/resumable/{sessionId}/chunk/{chunkIndex}")
+    public ResponseEntity<ApiResponse<UploadSessionDto>> uploadChunk(
+            @AuthenticationPrincipal UserPrincipal user,
+            @PathVariable String sessionId,
+            @PathVariable Integer chunkIndex,
+            @RequestParam("chunk") MultipartFile chunk) {
+        ensureUser(user);
+        UploadSessionDto session = advancedUploadService.uploadChunk(sessionId, chunkIndex, chunk, user.getUserId());
+        return ResponseEntity.ok(ApiResponse.success("分块上传成功", ErrorCode.SUCCESS.name(), session));
+    }
+
+    /**
+     * 完成断点续传
+     */
+    @PostMapping("/resumable/{sessionId}/complete")
+    public ResponseEntity<ApiResponse<FileMetadataDto>> completeResumableUpload(
+            @AuthenticationPrincipal UserPrincipal user,
+            @PathVariable String sessionId) {
+        ensureUser(user);
+        FileMetadataDto metadata = advancedUploadService.completeResumableUpload(sessionId, user.getUserId());
+        fileSyncService.notifyChange(user.getUserId(), Map.of("type", "upload", "fileId", metadata.getFileId()));
+        return ResponseEntity.ok(ApiResponse.success("文件上传完成", ErrorCode.SUCCESS.name(), metadata));
+    }
+
+    /**
+     * 获取用户的所有上传会话
+     */
+    @GetMapping("/resumable/sessions")
+    public ResponseEntity<ApiResponse<List<UploadSessionDto>>> listSessions(
+            @AuthenticationPrincipal UserPrincipal user) {
+        ensureUser(user);
+        List<UploadSessionDto> sessions = advancedUploadService.listSessions(user.getUserId());
+        return ResponseEntity.ok(ApiResponse.success(sessions));
+    }
+
+    /**
+     * 获取文件的块签名（用于差分同步）
+     */
+    @GetMapping("/{fileId}/signatures")
+    public ResponseEntity<ApiResponse<List<Map<String, Object>>>> getFileSignatures(
+            @AuthenticationPrincipal UserPrincipal user,
+            @PathVariable String fileId) {
+        ensureUser(user);
+        List<Map<String, Object>> signatures = diffSyncService.getFileSignatures(fileId, user.getUserId());
+        return ResponseEntity.ok(ApiResponse.success(signatures));
+    }
+
+    /**
+     * 应用差分更新
+     */
+    @PostMapping("/{fileId}/delta")
+    public ResponseEntity<ApiResponse<FileMetadataDto>> applyDelta(
+            @AuthenticationPrincipal UserPrincipal user,
+            @PathVariable String fileId,
+            @RequestBody Map<String, Object> request) {
+        ensureUser(user);
+        // TODO: 解析deltaChunks（需要处理二进制数据传输）
+        Map<Integer, byte[]> deltaChunks = new HashMap<>();
+        
+        FileMetadataDto metadata = diffSyncService.applyDelta(fileId, user.getUserId(), deltaChunks);
+        fileSyncService.notifyChange(user.getUserId(), Map.of("type", "delta-update", "fileId", fileId));
+        return ResponseEntity.ok(ApiResponse.success("差分更新成功", ErrorCode.SUCCESS.name(), metadata));
+    }
+
+    /**
+     * 上传加密文件（客户端已加密）
+     */
+    @PostMapping("/upload-encrypted")
+    public ResponseEntity<ApiResponse<FileMetadataDto>> uploadEncrypted(
+            @AuthenticationPrincipal UserPrincipal user,
+            @RequestParam("file") MultipartFile file,
+            @RequestParam("metadata") String metadataJson) {
+        ensureUser(user);
+        
+        // 解析加密元数据
+        try {
+            com.fasterxml.jackson.databind.ObjectMapper mapper = new com.fasterxml.jackson.databind.ObjectMapper();
+            EncryptedUploadRequest request = mapper.readValue(metadataJson, EncryptedUploadRequest.class);
+            
+            FileMetadataDto metadata = encryptionService.uploadEncryptedFile(file, request, user.getUserId());
+            fileSyncService.notifyChange(user.getUserId(), Map.of("type", "encrypted-upload", "fileId", metadata.getFileId()));
+            return ResponseEntity.ok(ApiResponse.success("加密文件上传成功", ErrorCode.SUCCESS.name(), metadata));
+        } catch (Exception e) {
+            throw new BusinessException(ErrorCode.VALIDATION_ERROR, "解析加密元数据失败: " + e.getMessage());
+        }
+    }
+
+    /**
+     * 获取文件的加密元数据
+     */
+    @GetMapping("/{fileId}/encryption")
+    public ResponseEntity<ApiResponse<Map<String, Object>>> getEncryptionMetadata(
+            @AuthenticationPrincipal UserPrincipal user,
+            @PathVariable String fileId) {
+        ensureUser(user);
+        Map<String, Object> metadata = encryptionService.getEncryptionMetadata(fileId, user.getUserId());
+        return ResponseEntity.ok(ApiResponse.success(metadata));
+    }
+
+    /**
+     * 检查收敛加密文件是否可以秒传
+     */
+    @PostMapping("/convergent-check")
+    public ResponseEntity<ApiResponse<Map<String, Boolean>>> checkConvergentQuickUpload(
+            @AuthenticationPrincipal UserPrincipal user,
+            @RequestBody Map<String, String> request) {
+        ensureUser(user);
+        String originalHash = request.get("originalHash");
+        boolean canQuickUpload = encryptionService.checkConvergentQuickUpload(originalHash, user.getUserId());
+        return ResponseEntity.ok(ApiResponse.success(Map.of("canQuickUpload", canQuickUpload)));
     }
 
     /**

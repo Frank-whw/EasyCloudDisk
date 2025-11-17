@@ -2,7 +2,6 @@ package com.clouddisk.client.sync;
 
 import com.clouddisk.client.util.FileUtils;
 
-import java.io.File;
 import java.io.FileInputStream;
 import java.io.FileOutputStream;
 import java.io.IOException;
@@ -23,9 +22,10 @@ public class CompressionService {
     public byte[] compress(Path source) throws IOException {
         FileUtils.checkFile(source);
         Path tempPath = FileUtils.createTempFile("compressed", ".zip");
-        try(FileOutputStream fos = new FileOutputStream(tempPath.toFile())) {
-            ZipOutputStream zos = new ZipOutputStream(fos);
-            FileInputStream fis = new FileInputStream(source.toFile());
+        try (FileOutputStream fos = new FileOutputStream(tempPath.toFile());
+             ZipOutputStream zos = new ZipOutputStream(fos);
+             FileInputStream fis = new FileInputStream(source.toFile())) {
+            
             zos.putNextEntry(new ZipEntry(source.getFileName().toString()));
             byte[] buffer = new byte[1024];
             int length;
