@@ -5,8 +5,8 @@ client:
   compressStrategy: ${CLIENT_COMPRESS_STRATEGY:zip}
   enableAutoSync: ${CLIENT_ENABLE_AUTO_SYNC:true}
   enableS3DirectUpload: ${CLIENT_ENABLE_S3_DIRECT_UPLOAD:false}
-  email: ${CLIENT_EMAIL:2120320012@qq.com} # 改成自己的
-  password: ${CLIENT_PASSWORD:123456} # 改成自己的
+  email: ${CLIENT_EMAIL:2079685390@qq.com} # 改成自己的
+  password: ${CLIENT_PASSWORD:kobebryant24} # 改成自己的
   
   # S3 配置
   s3Bucket: ${S3_BUCKET:ecnu-cloudsys}
