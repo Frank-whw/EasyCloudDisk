@@ -69,9 +69,27 @@
 - **接口**: `POST /files/upload-encrypted`, `GET /files/{fileId}/encryption`, `POST /files/convergent-check`
 - **说明**: 上传加密文件，获取加密元数据，检查收敛加密
 
-### 14. run_all_tests.sh
-- **功能**: 运行所有测试的主脚本
+### 14. test_file_versions.sh 
+- **功能**: 测试文件版本控制功能
+- **接口**: `POST /files/upload` (版本更新)
+- **说明**: 测试文件的多次更新，验证版本号自动递增和历史版本保留
+
+### 15. test_collaboration_share.sh
+- **功能**: 测试文件共享与协同功能
+- **接口**: `POST /collaboration/shares`, `GET /collaboration/shares`, `GET /collaboration/shared-with-me`, `DELETE /collaboration/shares/{shareId}`
+- **说明**: 测试文件共享、权限控制（READ/WRITE）、共享列表、撤销共享等完整功能
+
+### 16. run_all_tests.sh
+- **功能**: 运行所有 API 集成测试的主脚本
 - **说明**: 按顺序执行所有测试，生成测试报告
+
+### 17. run_all_tests_complete.sh
+- **功能**: 运行完整测试套件（Java 单元测试 + API 集成测试）
+- **说明**: 
+  - 第一部分: 运行 Maven 单元测试（server/src/test/）
+  - 第二部分: 运行所有 API 集成测试（test/*.sh）
+  - 生成统一的测试报告
+  - 彩色输出，清晰展示测试结果
 
 ## 使用方法
 
@@ -92,13 +110,24 @@ export API_BASE_URL="http://localhost:8080"
 ./test/test_file_upload.sh
 ```
 
-### 运行所有测试（推荐）
+### 运行所有 API 集成测试
 ```bash
 # 确保脚本有执行权限
 chmod +x test/*.sh
 
-# 运行所有测试
+# 仅运行 API 集成测试
 ./test/run_all_tests.sh
+```
+
+### 运行完整测试套件
+```bash
+# 运行 Java 单元测试 + API 集成测试
+./test/run_all_tests_complete.sh
+
+# 这将执行:
+# 1. server/src/test/ 下的所有 Java 单元测试
+# 2. test/ 下的所有 API 集成测试脚本
+# 3. 生成统一的测试报告
 ```
 
 ## 测试特性
@@ -132,15 +161,70 @@ chmod +x test/*.sh
 11. `test_resumable_sessions.sh` - 会话列表（可与断点续传一起测试）
 12. `test_delta_sync.sh` - 差分同步（需要先上传分块文件）
 13. `test_encryption.sh` - 数据加密（独立测试）
+14. `test_file_versions.sh` - 文件版本控制（独立测试）
+15. `test_collaboration_share.sh` - 文件共享与协同（独立测试）
 
-使用 `run_all_tests.sh` 会自动处理依赖关系，按顺序执行所有测试。
+使用 `run_all_tests.sh` 或 `run_all_tests_complete.sh` 会自动处理依赖关系，按顺序执行所有测试。
+
+## 测试架构
+
+### 测试层级
+```
+EasyCloudDisk 测试体系
+├── 单元测试 (Unit Tests)
+│   ├── server/src/test/java/com/clouddisk/service/
+│   │   ├── UserServiceTest.java (6 tests)
+│   │   ├── FileServiceTest.java (11 tests)
+│   │   ├── ChunkServiceTest.java (7 tests)
+│   │   ├── CollaborationServiceTest.java (2 tests)
+│   │   ├── AdvancedUploadServiceTest.java (12 tests)
+│   │   └── DiffSyncServiceTest.java (8 tests)
+│   └── 使用 JUnit + Mockito 进行依赖隔离测试
+│
+└── 集成测试 (Integration Tests)
+    ├── test/*.sh (15个 API 测试脚本)
+    ├── 测试真实的 HTTP 请求/响应
+    ├── 测试服务端与 S3 的集成
+    └── 端到端的业务流程测试
+```
+
+### 测试覆盖范围
+
+**服务端 Service 测试覆盖: 67% (6/9)**
+- UserService
+- FileService
+- ChunkService
+- CollaborationService
+- AdvancedUploadService
+- DiffSyncService
+- EncryptionService (待补充)
+- FileSyncService (SSE功能)
+- CustomUserDetailsService (低优先级)
+
+**API 端点测试覆盖: 95%+**
+- 认证模块 (注册、登录)
+- 文件操作 (上传、下载、列表、删除)
+- 高级上传 (秒传、断点续传、差分同步)
+- 数据加密
+- 文件版本控制
+- 文件共享与协同
 
 ## 测试报告
 
+### 运行 API 集成测试
 运行 `run_all_tests.sh` 会生成测试报告：
 - 文件名: `test_report_YYYYMMDD_HHMMSS.txt`
-- 包含所有测试的详细输出
+- 包含所有 API 测试的详细输出
 - 包含测试摘要（通过/失败统计）
+- 彩色输出，清晰展示每个测试的状态
+
+### 运行完整测试套件
+运行 `run_all_tests_complete.sh` 会生成统一测试报告：
+- 第一部分: Java 单元测试结果
+- 第二部分: API 集成测试结果
+- 彩色输出，清晰展示每个测试的状态
+- 保存详细报告到 `test_report_YYYYMMDD_HHMMSS.txt`
+
 
 ## 环境变量
 
@@ -173,14 +257,70 @@ chmod +x test/*.sh
 - 检查 Bucket 是否存在且可访问
 - 检查区域配置是否正确
 
-## 贡献
+## 快速开始
 
-添加新测试时，请遵循以下规范：
-1. 文件名以 `test_` 开头
+### 前提条件
+1. 服务器运行在 `http://localhost:8080`
+2. 数据库已启动并连接正常
+3. AWS S3 已配置
+
+### 快速验证
+```bash
+# 1. 运行完整测试套件（推荐）
+./test/run_all_tests_complete.sh
+
+# 2. 仅运行 Java 单元测试
+cd server && mvn test
+
+# 3. 仅运行 API 集成测试
+./test/run_all_tests.sh
+
+# 4. 运行单个测试
+./test/test_collaboration_share.sh
+```
+
+## 新功能测试指南 ✨
+
+### 文件版本控制测试
+```bash
+./test/test_file_versions.sh
+```
+测试内容:
+- ✓ 上传新文件（版本1）
+- ✓ 更新文件（版本2、版本3...）
+- ✓ 版本号自动递增
+- ✓ 下载当前版本
+- ✓ 历史版本保留
+
+### 文件共享与协同测试
+```bash
+./test/test_collaboration_share.sh
+```
+测试内容:
+- ✓ 创建文件共享（READ/WRITE权限）
+- ✓ 列出文件的共享记录
+- ✓ 查看"共享给我"的文件列表
+- ✓ 权限验证（READ可下载，不可删除）
+- ✓ 撤销共享
+- ✓ 撤销后访问控制
+
+## 贡献指南
+
+### 添加 Java 单元测试
+1. 在 `server/src/test/java/com/clouddisk/service/` 创建测试类
+2. 使用 JUnit 5 + Mockito
+3. 命名规范: `{ServiceName}Test.java`
+4. 确保使用 `@ExtendWith(MockitoExtension.class)`
+5. Mock 所有依赖，隔离测试
+6. 运行: `cd server && mvn test`
+
+### 添加 API 集成测试
+1. 文件名以 `test_` 开头，放在 `test/` 目录
 2. 使用唯一的测试数据（时间戳+随机数）
 3. 包含完整的错误处理
 4. 输出清晰的测试结果
 5. 返回正确的退出码（0=成功，非0=失败）
 6. 如果设置了环境变量（如 TOKEN、FILE_ID），使用 `ENV_FILE` 机制传递给其他测试
 7. 如果测试依赖其他测试的结果，自动运行依赖的测试或优雅处理缺失
+8. 更新 `test/README.md` 和 `run_all_tests_complete.sh`
 

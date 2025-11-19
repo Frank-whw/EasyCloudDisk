@@ -3,7 +3,6 @@ package com.clouddisk.service;
 import com.clouddisk.dto.EncryptedUploadRequest;
 import com.clouddisk.dto.FileMetadataDto;
 import com.clouddisk.entity.FileEncryptionMetadata;
-import com.clouddisk.entity.FileEntity;
 import com.clouddisk.exception.BusinessException;
 import com.clouddisk.exception.ErrorCode;
 import com.clouddisk.repository.FileEncryptionMetadataRepository;
@@ -78,7 +77,8 @@ public class EncryptionService {
      */
     @Transactional(readOnly = true)
     public Map<String, Object> getEncryptionMetadata(String fileId, String userId) {
-        FileEntity file = fileRepository.findByFileIdAndUserId(fileId, userId)
+        // 验证文件所有权
+        fileRepository.findByFileIdAndUserId(fileId, userId)
                 .orElseThrow(() -> new BusinessException(ErrorCode.FILE_NOT_FOUND));
         
         FileEncryptionMetadata metadata = encryptionMetadataRepository.findByFileId(fileId)

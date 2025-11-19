@@ -21,6 +21,35 @@
         <jwt.version>0.12.3</jwt.version>
     </properties>
 
+    <!-- 配置阿里云 Maven 镜像 -->
+    <repositories>
+        <repository>
+            <id>aliyunmaven</id>
+            <name>aliyun maven</name>
+            <url>https://maven.aliyun.com/repository/public</url>
+            <layout>default</layout>
+            <releases>
+                <enabled>true</enabled>
+            </releases>
+            <snapshots>
+                <enabled>false</enabled>
+            </snapshots>
+        </repository>
+    </repositories>
+    <pluginRepositories>
+        <pluginRepository>
+            <id>aliyunmaven</id>
+            <name>aliyun maven</name>
+            <url>https://maven.aliyun.com/repository/public</url>
+            <releases>
+                <enabled>true</enabled>
+            </releases>
+            <snapshots>
+                <enabled>false</enabled>
+            </snapshots>
+        </pluginRepository>
+    </pluginRepositories>
+
     <dependencyManagement>
         <dependencies>
             <dependency>

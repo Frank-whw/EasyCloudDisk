@@ -1,6 +1,5 @@
 package com.clouddisk.repository;
 
-import com.clouddisk.entity.FileEntity;
 import com.clouddisk.entity.FileVersion;
 import org.springframework.data.jpa.repository.JpaRepository;
 
