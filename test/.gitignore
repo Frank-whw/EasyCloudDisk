@@ -1,0 +1,8 @@
+# 忽略测试报告文件
+test_report_*.txt
+
+# 忽略临时测试文件
+*.tmp
+temp_*.txt
+test_*.txt
+
