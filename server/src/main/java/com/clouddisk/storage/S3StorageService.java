@@ -137,7 +137,15 @@ public class S3StorageService implements StorageService {
                     .build();
             ResponseInputStream<GetObjectResponse> response = s3Client.getObject(request);
             if (decompress) {
-                return new java.util.zip.GZIPInputStream(response);
+                String encoding = response.response().contentEncoding();
+                String compressedMeta = response.response().metadata() != null
+                        ? response.response().metadata().getOrDefault("compressed", "false")
+                        : "false";
+                boolean isGzip = encoding != null && encoding.equalsIgnoreCase("gzip");
+                boolean markedCompressed = "true".equalsIgnoreCase(compressedMeta);
+                if (isGzip || markedCompressed) {
+                    return new java.util.zip.GZIPInputStream(response);
+                }
             }
             return response;
         } catch (IOException | S3Exception ex) {

@@ -52,8 +52,9 @@ public class AdvancedUploadService {
      * @return 如果存在相同哈希的文件则返回true
      */
     public boolean checkQuickUpload(String hash, String userId) {
-        return fileRepository.findAll().stream()
-                .anyMatch(file -> hash.equals(file.getContentHash()) && !file.isDirectory());
+        return fileRepository.findFirstByContentHash(hash)
+                .map(file -> !file.isDirectory())
+                .orElse(false);
     }
     
     /**
@@ -67,13 +68,12 @@ public class AdvancedUploadService {
     @Transactional
     public FileMetadataDto quickUpload(String hash, String fileName, String path, String userId) {
         // 查找具有相同哈希的文件
-        FileEntity sourceFile = fileRepository.findAll().stream()
-                .filter(file -> hash.equals(file.getContentHash()) && !file.isDirectory())
-                .findFirst()
+        FileEntity sourceFile = fileRepository.findFirstByContentHash(hash)
+                .filter(file -> !file.isDirectory())
                 .orElseThrow(() -> new BusinessException(ErrorCode.FILE_NOT_FOUND, "未找到可秒传的文件"));
         
         // 检查是否已存在同名文件
-        String normalizedPath = path == null || path.isEmpty() ? "/" : path;
+        String normalizedPath = fileService.normalizePath(path);
         fileRepository.findByUserIdAndDirectoryPathAndName(userId, normalizedPath, fileName)
                 .ifPresent(existing -> {
                     throw new BusinessException(ErrorCode.VALIDATION_ERROR, "文件已存在");
@@ -106,7 +106,7 @@ public class AdvancedUploadService {
         UploadSession session = new UploadSession();
         session.setUserId(userId);
         session.setFileName(fileName);
-        session.setFilePath(path == null || path.isEmpty() ? "/" : path);
+        session.setFilePath(fileService.normalizePath(path));
         session.setFileSize(fileSize);
         session.setTotalChunks(totalChunks);
         session.setChunkSize(CHUNK_SIZE);

@@ -213,6 +213,9 @@ public class FileService {
         if (!StringUtils.hasText(safeName)) {
             throw new BusinessException(ErrorCode.VALIDATION_ERROR, "目录名不能为空");
         }
+        if (safeName.contains("/") || safeName.contains("\\") || safeName.contains("..")) {
+            throw new BusinessException(ErrorCode.VALIDATION_ERROR, "非法目录名");
+        }
         fileRepository.findByUserIdAndDirectoryPathAndName(userId, normalizedParent, safeName)
                 .ifPresent(existing -> {
                     throw new BusinessException(ErrorCode.DIRECTORY_ALREADY_EXISTS);
@@ -244,17 +247,29 @@ public class FileService {
     /**
      * 标准化目录路径，统一斜杠并确保以根路径开头。
      */
-    private String normalizePath(String path) {
+    public String normalizePath(String path) {
         if (!StringUtils.hasText(path)) {
             return "/";
         }
-        String normalized = path.replace("\\", "/");
-        if (!normalized.startsWith("/")) {
-            normalized = "/" + normalized;
+        String s = path.replace("\\", "/");
+        String[] parts = s.split("/");
+        java.util.Deque<String> stack = new java.util.ArrayDeque<>();
+        for (String part : parts) {
+            if (part == null || part.isEmpty() || ".".equals(part)) {
+                continue;
+            }
+            if ("..".equals(part)) {
+                if (!stack.isEmpty()) {
+                    stack.pollLast();
+                }
+                continue;
+            }
+            stack.addLast(part);
         }
-        if (normalized.endsWith("/") && normalized.length() > 1) {
-            normalized = normalized.substring(0, normalized.length() - 1);
+        String result = "/" + String.join("/", stack);
+        if (result.length() > 1 && result.endsWith("/")) {
+            result = result.substring(0, result.length() - 1);
         }
-        return normalized;
+        return result.isEmpty() ? "/" : result;
     }
 }

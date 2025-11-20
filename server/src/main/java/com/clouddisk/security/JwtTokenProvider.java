@@ -72,6 +72,17 @@ public class JwtTokenProvider {
                 .compact();
     }
 
+    public String generateRefreshToken(String subject, int tokenVersion) {
+        Instant now = Instant.now();
+        return Jwts.builder()
+                .subject(subject)
+                .issuedAt(Date.from(now))
+                .expiration(Date.from(now.plusMillis(refreshTokenValidityMs)))
+                .claim("tokenVersion", tokenVersion)
+                .signWith(refreshKey)
+                .compact();
+    }
+
     /**
      * 校验令牌是否有效。
      */
@@ -81,6 +92,16 @@ public class JwtTokenProvider {
             return true;
         } catch (Exception ex) {
             log.warn("Invalid JWT token: {}", ex.getMessage());
+            return false;
+        }
+    }
+
+    public boolean validateRefreshToken(String token) {
+        try {
+            parseRefreshClaims(token);
+            return true;
+        } catch (Exception ex) {
+            log.warn("Invalid refresh token: {}", ex.getMessage());
             return false;
         }
     }
@@ -104,6 +125,14 @@ public class JwtTokenProvider {
     public Claims parseClaims(String token) {
         return Jwts.parser()
                 .verifyWith(accessKey)
+                .build()
+                .parseSignedClaims(token)
+                .getPayload();
+    }
+
+    public Claims parseRefreshClaims(String token) {
+        return Jwts.parser()
+                .verifyWith(refreshKey)
                 .build()
                 .parseSignedClaims(token)
                 .getPayload();

@@ -101,13 +101,22 @@ public class UserService {
      * 刷新访问令牌。
      */
     public AuthResponse refreshToken(String refreshToken) {
-        if (!tokenProvider.validateToken(refreshToken)) {
+        if (!tokenProvider.validateRefreshToken(refreshToken)) {
             throw new BusinessException(ErrorCode.INVALID_CREDENTIALS, "刷新令牌无效");
         }
-        String userId = tokenProvider.getSubject(refreshToken)
-                .orElseThrow(() -> new BusinessException(ErrorCode.INVALID_CREDENTIALS));
+        io.jsonwebtoken.Claims claims = tokenProvider.parseRefreshClaims(refreshToken);
+        String userId = claims.getSubject();
+        if (userId == null || userId.isBlank()) {
+            throw new BusinessException(ErrorCode.INVALID_CREDENTIALS);
+        }
+
         User user = userRepository.findById(userId)
                 .orElseThrow(() -> new BusinessException(ErrorCode.USER_NOT_FOUND));
+        Integer claimVersion = claims.get("tokenVersion", Integer.class);
+        if (claimVersion == null || claimVersion.intValue() != user.getTokenVersion()) {
+            throw new BusinessException(ErrorCode.INVALID_CREDENTIALS, "刷新令牌已失效");
+        }
+
         return buildAuthResponse(user);
     }
 
@@ -127,7 +136,7 @@ public class UserService {
     private AuthResponse buildAuthResponse(User user) {
         Map<String, Object> claims = Map.of("email", user.getEmail(), "tokenVersion", user.getTokenVersion());
         String accessToken = tokenProvider.generateToken(user.getUserId(), claims);
-        String refreshToken = tokenProvider.generateRefreshToken(user.getUserId());
+        String refreshToken = tokenProvider.generateRefreshToken(user.getUserId(), user.getTokenVersion());
         return new AuthResponse(user.getUserId(), user.getEmail(), accessToken, refreshToken);
     }
 }

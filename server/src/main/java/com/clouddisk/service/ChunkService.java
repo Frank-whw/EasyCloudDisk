@@ -93,6 +93,38 @@ public class ChunkService {
         return chunks.size();
     }
 
+    @Transactional
+    public void copyChunkReferences(String sourceFileId, String targetFileId, int targetVersion) {
+        List<FileChunkMapping> all = mappingRepository.findByFileId(sourceFileId);
+        if (all.isEmpty()) {
+            throw new BusinessException(ErrorCode.FILE_NOT_FOUND, "源文件无块映射");
+        }
+        int latest = all.stream().map(FileChunkMapping::getVersionNumber).max(Integer::compare).orElse(1);
+        List<FileChunkMapping> src = new ArrayList<>();
+        for (FileChunkMapping m : all) {
+            if (m.getVersionNumber() == latest) {
+                src.add(m);
+            }
+        }
+        long offset = 0;
+        src.sort(java.util.Comparator.comparingInt(FileChunkMapping::getSequenceNumber));
+        for (FileChunkMapping m : src) {
+            FileChunk chunk = chunkRepository.findById(m.getChunkId())
+                    .orElseThrow(() -> new BusinessException(ErrorCode.STORAGE_ERROR, "块不存在"));
+            chunk.incrementRef();
+            chunkRepository.save(chunk);
+
+            FileChunkMapping copy = new FileChunkMapping();
+            copy.setFileId(targetFileId);
+            copy.setVersionNumber(targetVersion);
+            copy.setChunkId(chunk.getChunkId());
+            copy.setSequenceNumber(m.getSequenceNumber());
+            copy.setOffsetInFile(offset);
+            mappingRepository.save(copy);
+            offset += chunk.getChunkSize();
+        }
+    }
+
     /**
      * 根据块映射重组文件。
      * 
