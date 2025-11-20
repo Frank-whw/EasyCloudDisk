@@ -219,10 +219,58 @@ public class FileController {
             @PathVariable String fileId,
             @RequestBody Map<String, Object> request) {
         ensureUser(user);
-        // TODO: 解析deltaChunks（需要处理二进制数据传输）
-        Map<Integer, byte[]> deltaChunks = new HashMap<>();
         
-        FileMetadataDto metadata = diffSyncService.applyDelta(fileId, user.getUserId(), deltaChunks);
+        // 解析deltaChunks（Base64编码的字符串 -> byte[]）
+        Map<Integer, byte[]> deltaChunks = new HashMap<>();
+        @SuppressWarnings("unchecked")
+        Map<String, Object> deltaChunksObj = (Map<String, Object>) request.get("deltaChunks");
+        
+        if (deltaChunksObj != null) {
+            for (Map.Entry<String, Object> entry : deltaChunksObj.entrySet()) {
+                try {
+                    int chunkIndex = Integer.parseInt(entry.getKey());
+                    String base64Data = entry.getValue() != null ? entry.getValue().toString() : null;
+                    if (base64Data == null) {
+                        continue;
+                    }
+                    // Base64解码
+                    byte[] chunkData = java.util.Base64.getDecoder().decode(base64Data);
+                    deltaChunks.put(chunkIndex, chunkData);
+                } catch (Exception e) {
+                    throw new BusinessException(ErrorCode.VALIDATION_ERROR, 
+                        "解析差分块数据失败: " + e.getMessage());
+                }
+            }
+        }
+        
+        // 解析chunkHashes（所有块的哈希信息，用于匹配和复用）
+        Map<Integer, String> chunkHashes = new HashMap<>();
+        @SuppressWarnings("unchecked")
+        Map<String, Object> chunkHashesObj = (Map<String, Object>) request.get("chunkHashes");
+        
+        if (chunkHashesObj != null) {
+            for (Map.Entry<String, Object> entry : chunkHashesObj.entrySet()) {
+                try {
+                    int chunkIndex = Integer.parseInt(entry.getKey());
+                    String hash = entry.getValue() != null ? entry.getValue().toString() : null;
+                    if (hash == null) {
+                        continue;
+                    }
+                    chunkHashes.put(chunkIndex, hash);
+                } catch (Exception e) {
+                    throw new BusinessException(ErrorCode.VALIDATION_ERROR, 
+                        "解析块哈希信息失败: " + e.getMessage());
+                }
+            }
+        }
+        
+        // 验证必需参数
+        if (chunkHashes.isEmpty()) {
+            throw new BusinessException(ErrorCode.VALIDATION_ERROR, 
+                "chunkHashes不能为空，必须提供新文件的所有块哈希信息");
+        }
+        
+        FileMetadataDto metadata = diffSyncService.applyDelta(fileId, user.getUserId(), deltaChunks, chunkHashes);
         fileSyncService.notifyChange(user.getUserId(), Map.of("type", "delta-update", "fileId", fileId));
         return ResponseEntity.ok(ApiResponse.success("差分更新成功", ErrorCode.SUCCESS.name(), metadata));
     }

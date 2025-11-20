@@ -151,10 +151,10 @@
                     </div>
                     <div class="toolbar-right">
                         <div class="view-toggle">
-                            <button class="btn btn-icon active" onclick="fileManager.setViewMode('grid')" title="网格视图">
+                            <button class="btn btn-icon active" onclick="fileManager.setViewMode('grid', this)" title="网格视图">
                                 <i class="fas fa-th"></i>
                             </button>
-                            <button class="btn btn-icon" onclick="fileManager.setViewMode('list')" title="列表视图">
+                            <button class="btn btn-icon" onclick="fileManager.setViewMode('list', this)" title="列表视图">
                                 <i class="fas fa-list"></i>
                             </button>
                         </div>
@@ -186,10 +186,12 @@
     <script src="js/utils.js"></script>
     <script src="js/api.js"></script>
     <script src="js/auth.js"></script>
+    <script src="js/hashCalculator.js"></script>
+    <script src="js/encryptionManager.js"></script>
+    <script src="js/deltaSyncManager.js"></script>
     <script src="js/fileManager.js"></script>
     <script src="js/uploadManager.js"></script>
     <script src="js/syncManager.js"></script>
-    <script src="js/hashCalculator.js"></script>
     <script src="js/app.js"></script>
 </body>
 </html>

@@ -9,7 +9,7 @@ import lombok.Data;
  */
 @Entity
 @Table(name = "file_chunk_mappings", indexes = {
-        @Index(name = "idx_file_id_seq", columnList = "fileId,sequenceNumber", unique = true),
+        @Index(name = "idx_file_id_version_seq", columnList = "fileId,versionNumber,sequenceNumber", unique = true),
         @Index(name = "idx_chunk_id", columnList = "chunkId")
 })
 @Data

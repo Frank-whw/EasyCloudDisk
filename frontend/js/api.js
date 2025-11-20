@@ -192,8 +192,10 @@ class ApiClient {
     }
 
     // 应用差分更新
-    async applyDelta(fileId, deltaChunks) {
-        return this.post(`/files/${fileId}/delta`, { deltaChunks });
+    // deltaData: { deltaChunks: { [chunkIndex: string]: base64String }, chunkHashes: { [chunkIndex: string]: hashString } }
+    async applyDelta(fileId, deltaData) {
+        // deltaData 已经包含了 deltaChunks 和 chunkHashes，直接发送
+        return this.post(`/files/${fileId}/delta`, deltaData);
     }
 
     // ==================== 加密上传相关 ====================

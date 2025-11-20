@@ -121,7 +121,9 @@ const fileManager = {
 
         // 如果是目录，使用文件夹图标；否则根据文件扩展名获取图标
         const icon = file.directory ? 'fas fa-folder' : getFileIcon(file.name);
-        const size = formatFileSize(file.fileSize || 0);
+        // 支持 fileSize 和 size 两种字段名，文件夹不显示大小
+        const fileSize = file.fileSize !== undefined ? file.fileSize : (file.size !== undefined ? file.size : null);
+        const size = file.directory ? '-' : formatFileSize(fileSize || 0);
         const date = formatDate(file.createdAt || file.updatedAt);
 
         if (mode === 'grid') {
@@ -135,6 +137,9 @@ const fileManager = {
                     ${!file.directory ? `
                     <button class="btn btn-primary btn-small" onclick="fileManager.downloadFile('${file.fileId}', '${file.name}')">
                         <i class="fas fa-download"></i> 下载
+                    </button>
+                    <button class="btn btn-secondary btn-small" onclick="fileManager.showDeltaSyncDialog('${file.fileId}', '${file.name}')" title="差分同步更新">
+                        <i class="fas fa-sync-alt"></i> 差分同步
                     </button>` : ''}
                     <button class="btn btn-danger btn-small" onclick="fileManager.deleteFile('${file.fileId}')">
                         <i class="fas fa-trash"></i> 删除
@@ -154,6 +159,9 @@ const fileManager = {
                     ${!file.directory ? `
                     <button class="btn btn-primary btn-small" onclick="fileManager.downloadFile('${file.fileId}', '${file.name}')">
                         <i class="fas fa-download"></i> 下载
+                    </button>
+                    <button class="btn btn-secondary btn-small" onclick="fileManager.showDeltaSyncDialog('${file.fileId}', '${file.name}')" title="差分同步更新">
+                        <i class="fas fa-sync-alt"></i> 差分同步
                     </button>` : ''}
                     <button class="btn btn-danger btn-small" onclick="fileManager.deleteFile('${file.fileId}')">
                         <i class="fas fa-trash"></i> 删除
@@ -290,7 +298,7 @@ const fileManager = {
     },
 
     // 设置视图模式
-    setViewMode(mode) {
+    setViewMode(mode, buttonElement = null) {
         this.viewMode = mode;
         localStorage.setItem('viewMode', mode);
         
@@ -298,7 +306,17 @@ const fileManager = {
         document.querySelectorAll('.view-toggle .btn-icon').forEach(btn => {
             btn.classList.remove('active');
         });
-        event.target.closest('.btn-icon').classList.add('active');
+        if (buttonElement) {
+            buttonElement.classList.add('active');
+        } else {
+            // 如果没有传入按钮元素，尝试通过模式查找
+            const buttons = document.querySelectorAll('.view-toggle .btn-icon');
+            buttons.forEach(btn => {
+                if (btn.getAttribute('onclick')?.includes(`'${mode}'`)) {
+                    btn.classList.add('active');
+                }
+            });
+        }
         
         this.renderFiles();
     },
@@ -413,6 +431,49 @@ const fileManager = {
     showSyncStatus() {
         // TODO: 实现同步状态显示
         showAlert('同步状态功能开发中', 'info');
+    },
+
+    // 显示差分同步对话框
+    showDeltaSyncDialog(fileId, fileName) {
+        const content = `
+            <div class="form-group">
+                <label>选择更新后的文件</label>
+                <p style="font-size: 12px; color: #666; margin-bottom: 8px;">
+                    选择本地已修改的文件，系统将自动检测差异并仅上传变更的块
+                </p>
+                <input type="file" id="deltaSyncFileInput" style="width: 100%;">
+            </div>
+            <div class="form-group">
+                <label>当前文件: ${fileName}</label>
+            </div>
+        `;
+
+        const footer = `
+            <button class="btn btn-secondary" onclick="closeModal(this.closest('.modal-overlay'))">取消</button>
+            <button class="btn btn-primary" onclick="
+                const fileInput = document.getElementById('deltaSyncFileInput');
+                if (!fileInput.files[0]) {
+                    showAlert('请选择文件', 'error');
+                    return;
+                }
+                const file = fileInput.files[0];
+                closeModal(this.closest('.modal-overlay'));
+                fileManager.syncFileWithDelta('${fileId}', file);
+            ">开始同步</button>
+        `;
+
+        createModal('差分同步更新', content, footer);
+    },
+
+    // 执行差分同步
+    async syncFileWithDelta(fileId, newFile) {
+        try {
+            await uploadManager.syncFileWithDelta(fileId, newFile);
+            // 刷新文件列表
+            this.loadFiles();
+        } catch (error) {
+            console.error('差分同步失败:', error);
+        }
     }
 };
 

@@ -15,6 +15,7 @@ import org.springframework.transaction.annotation.Transactional;
 
 import java.io.*;
 import java.util.*;
+import java.util.Optional;
 import java.util.zip.GZIPOutputStream;
 
 /**
@@ -56,26 +57,43 @@ public class ChunkService {
     public int storeFileInChunks(String fileId, Integer versionNumber, byte[] fileData, 
                                   String userId, boolean compress) {
         List<byte[]> chunks = splitIntoChunks(fileData);
-        log.debug("File {} split into {} chunks", fileId, chunks.size());
+        log.info("文件分块处理: fileId={}, 总块数={}, 文件大小={}MB", 
+                fileId, chunks.size(), String.format("%.2f", fileData.length / 1024.0 / 1024.0));
 
         long offset = 0;
+        int newChunks = 0;
+        int reusedChunks = 0;
+        
         for (int i = 0; i < chunks.size(); i++) {
             final int chunkIndex = i; // 为lambda表达式创建final副本
             byte[] chunkData = chunks.get(i);
             String chunkHash = DigestUtils.sha256Hex(chunkData);
 
             // 检查块是否已存在(去重)
-            FileChunk chunk = chunkRepository.findByChunkHash(chunkHash)
-                    .orElseGet(() -> {
-                        log.debug("Chunk {} (hash: {}) not found, uploading to storage", chunkIndex, chunkHash);
-                        return uploadNewChunk(chunkHash, chunkData, userId, compress);
-                    });
-
-            // 如果块已存在,增加引用计数
-            if (chunk.getChunkId() != null) {
+            Optional<FileChunk> existingChunk = chunkRepository.findByChunkHash(chunkHash);
+            
+            FileChunk chunk;
+            boolean isNewChunk;
+            
+            if (existingChunk.isPresent()) {
+                // 块已存在，复用
+                chunk = existingChunk.get();
                 chunk.incrementRef();
                 chunkRepository.save(chunk);
-                log.debug("Chunk {} already exists, ref count: {}", chunkHash, chunk.getRefCount());
+                reusedChunks++;
+                isNewChunk = false;
+                log.info("块复用: fileId={}, 块索引={}/{}, 哈希={}..., 引用计数={}", 
+                        fileId, chunkIndex + 1, chunks.size(), 
+                        chunkHash.substring(0, 8), chunk.getRefCount());
+            } else {
+                // 块不存在，上传新块
+                log.info("新块上传: fileId={}, 块索引={}/{}, 块大小={}KB, 哈希={}...", 
+                        fileId, chunkIndex + 1, chunks.size(), 
+                        String.format("%.2f", chunkData.length / 1024.0), 
+                        chunkHash.substring(0, 8));
+                chunk = uploadNewChunk(chunkHash, chunkData, userId, compress);
+                newChunks++;
+                isNewChunk = true;
             }
 
             // 创建文件-块映射
@@ -89,6 +107,10 @@ public class ChunkService {
 
             offset += chunkData.length;
         }
+
+        log.info("块级去重完成: fileId={}, 总块数={}, 新块={}, 复用块={}, 去重率={}%", 
+                fileId, chunks.size(), newChunks, reusedChunks,
+                chunks.size() > 0 ? String.format("%.1f", reusedChunks * 100.0 / chunks.size()) : "0.0");
 
         return chunks.size();
     }
@@ -133,9 +155,10 @@ public class ChunkService {
      * 删除文件的块映射,并清理不再使用的块。
      * 
      * @param fileId 文件ID
+     * @param deleteMappings 是否删除块映射（false时保留块映射以支持秒传）
      */
     @Transactional
-    public void deleteFileChunks(String fileId) {
+    public void deleteFileChunks(String fileId, boolean deleteMappings) {
         List<FileChunkMapping> mappings = mappingRepository.findByFileId(fileId);
 
         for (FileChunkMapping mapping : mappings) {
@@ -153,7 +176,22 @@ public class ChunkService {
             }
         }
 
-        mappingRepository.deleteByFileId(fileId);
+        // 根据参数决定是否删除块映射
+        if (deleteMappings) {
+            mappingRepository.deleteByFileId(fileId);
+        } else {
+            log.debug("保留块映射以支持秒传: fileId={}", fileId);
+        }
+    }
+    
+    /**
+     * 删除文件的块映射,并清理不再使用的块（默认删除块映射）。
+     * 
+     * @param fileId 文件ID
+     */
+    @Transactional
+    public void deleteFileChunks(String fileId) {
+        deleteFileChunks(fileId, true);
     }
 
     /**

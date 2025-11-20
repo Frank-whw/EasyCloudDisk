@@ -193,7 +193,9 @@ public class FileService {
         if (!file.isDirectory() && file.getStorageKey() != null) {
             if ("chunked".equals(file.getStorageKey())) {
                 // 删除块存储(自动处理引用计数)
-                chunkService.deleteFileChunks(file.getFileId());
+                // 注意：不删除块映射，以便支持秒传功能
+                // 块映射会在文件恢复时被复用
+                chunkService.deleteFileChunks(file.getFileId(), false); // false表示不删除块映射
             } else {
                 // 旧格式:检查共享后删除
                 boolean shared = fileRepository.findAll().stream()
@@ -204,7 +206,9 @@ public class FileService {
             }
         }
         
-        fileVersionRepository.deleteAll(fileVersionRepository.findAllByFileIdOrderByVersionNumberDesc(file.getFileId()));
+        // 注意：不删除版本记录，以便支持秒传功能
+        // 即使文件被删除，版本记录仍然保留，可以通过文件哈希来秒传
+        // fileVersionRepository.deleteAll(fileVersionRepository.findAllByFileIdOrderByVersionNumberDesc(file.getFileId()));
         fileRepository.delete(file);
     }
 

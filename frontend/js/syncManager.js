@@ -118,28 +118,28 @@ const syncManager = {
             case 'quick-upload':
             case 'encrypted-upload':
                 showAlert(`文件已同步: ${name || '新文件'}`, 'success');
-                if (fileManager) {
+                if (fileManager && typeof fileManager.loadFiles === 'function') {
                     fileManager.loadFiles();
                 }
                 break;
 
             case 'delete':
                 showAlert('文件已删除', 'info');
-                if (fileManager) {
+                if (fileManager && typeof fileManager.loadFiles === 'function') {
                     fileManager.loadFiles();
                 }
                 break;
 
             case 'mkdir':
                 showAlert(`目录已创建: ${name}`, 'success');
-                if (fileManager) {
+                if (fileManager && typeof fileManager.loadFiles === 'function') {
                     fileManager.loadFiles();
                 }
                 break;
 
             case 'delta-update':
                 showAlert('文件已更新', 'info');
-                if (fileManager) {
+                if (fileManager && typeof fileManager.loadFiles === 'function') {
                     fileManager.loadFiles();
                 }
                 break;

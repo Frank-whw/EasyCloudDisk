@@ -12,7 +12,7 @@ import sseclient
 # 配置
 SERVER_URL = "http://localhost:8080"
 SYNC_DIR = "./sync_folder"
-EMAIL = "1693698849@qq.com"
+EMAIL = "2593698845@qq.com"
 PASSWORD = "abc123456"  # 该用户存在
 
 logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(message)s')
