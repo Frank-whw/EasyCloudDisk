@@ -124,6 +124,22 @@ public class FileController {
     }
 
     /**
+     * 客户端校验某内容哈希是否存在，以便跳过上传
+     * 约定：存在返回 200，不存在返回 404
+     */
+    @GetMapping("/check")
+    public ResponseEntity<Void> checkFileExists(
+            @AuthenticationPrincipal UserPrincipal user,
+            @RequestParam("contentHash") String contentHash) {
+        ensureUser(user);
+        boolean exists = advancedUploadService.checkQuickUpload(contentHash, user.getUserId());
+        if (exists) {
+            return ResponseEntity.ok().build();
+        }
+        return ResponseEntity.status(404).build();
+    }
+
+    /**
      * 执行秒传
      */
     @PostMapping("/quick-upload")
@@ -139,6 +155,24 @@ public class FileController {
         );
         fileSyncService.notifyChange(user.getUserId(), Map.of("type", "quick-upload", "fileId", metadata.getFileId()));
         return ResponseEntity.ok(ApiResponse.success("秒传成功", ErrorCode.SUCCESS.name(), metadata));
+    }
+
+    /**
+     * 客户端通知上传完成，兼容客户端 FileApiClient.notifyUploadComplete
+     */
+    @PostMapping("/notify-upload")
+    public ResponseEntity<ApiResponse<Map<String, Object>>> notifyUploadComplete(
+            @AuthenticationPrincipal UserPrincipal user,
+            @RequestBody Map<String, String> request) {
+        ensureUser(user);
+        String contentHash = request.get("contentHash");
+        String filePath = request.get("filePath");
+        boolean exists = advancedUploadService.checkQuickUpload(contentHash, user.getUserId());
+        Map<String, Object> result = Map.of(
+                "exists", exists,
+                "path", filePath
+        );
+        return ResponseEntity.ok(ApiResponse.success(result));
     }
 
     /**
