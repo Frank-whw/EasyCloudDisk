@@ -53,12 +53,19 @@ public class FileService {
 
     /**
      * 列出用户文件。
+     * @param userId 用户ID
+     * @param path 可选参数，指定要查询的目录路径，如果为null或空字符串，则返回根目录下的文件
      */
     @Transactional(readOnly = true)
-    public List<FileMetadataDto> listFiles(String userId) {
+    public List<FileMetadataDto> listFiles(String userId, String path) {
+        String normalizedPath = normalizePath(path != null ? path : "/");
+        
         return fileRepository.findAllByUserId(userId).stream()
+                .filter(file -> {
+                    // 过滤出指定路径下的文件和目录
+                    return file.getDirectoryPath().equals(normalizedPath);
+                })
                 .sorted(Comparator.comparing(FileEntity::isDirectory).reversed()
-                        .thenComparing(FileEntity::getDirectoryPath)
                         .thenComparing(FileEntity::getName))
                 .map(this::toDto)
                 .collect(Collectors.toList());
