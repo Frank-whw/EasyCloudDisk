@@ -52,6 +52,10 @@ public class FileResponse {
         this.fileId = fileId;
     }
 
+    public void setFileId(String fileId) {
+        this.fileId = fileId != null ? java.util.UUID.fromString(fileId) : null;
+    }
+
     public String getName() {
         return name;
     }
@@ -74,6 +78,14 @@ public class FileResponse {
 
     public void setFileSize(Long fileSize) {
         this.fileSize = fileSize;
+    }
+
+    public void setSize(Long size) {
+        this.fileSize = size;
+    }
+
+    public void setSize(long size) {
+        this.fileSize = size;
     }
 
     public String getContentHash() {

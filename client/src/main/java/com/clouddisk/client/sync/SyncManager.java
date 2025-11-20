@@ -103,6 +103,17 @@ public class SyncManager {
             log.info("文件监听服务已启动");
         }
     }
+
+    /**
+     * 兼容测试：设置监听目录并启动监听
+     * @param watchPath 被监听的目录
+     */
+    public void start(Path watchPath) throws IOException {
+        directoryWatcher.setEventListener(this::handleLocalEvent);
+        directoryWatcher.setWatchDir(watchPath);
+        watching = true;
+        directoryWatcher.start();
+    }
     
     /**
      * 停止文件监听
@@ -130,6 +141,13 @@ public class SyncManager {
                 }
             }
         }
+    }
+
+    /**
+     * 兼容测试：停止监听
+     */
+    public void stop() {
+        stopWatching();
     }
     
     /**

@@ -42,6 +42,15 @@ public class FileEvent {
         this.watchEvent = watchEvent;
         this.timestamp = System.currentTimeMillis();
     }
+
+    /**
+     * 兼容测试的简化构造函数
+     */
+    public FileEvent(Type type, Path filePath) {
+        this.eventType = fromType(type);
+        this.filePath = filePath;
+        this.timestamp = System.currentTimeMillis();
+    }
     
     /**
      * 事件类型枚举
@@ -66,6 +75,48 @@ public class FileEvent {
          * 未知事件类型
          */
         UNKNOWN
+    }
+
+    /**
+     * 兼容测试的别名枚举
+     */
+    public enum Type {
+        CREATE,
+        MODIFY,
+        DELETE,
+        UNKNOWN
+    }
+
+    /**
+     * 兼容测试的获取类型方法
+     */
+    public Type getType() {
+        return toType(this.eventType);
+    }
+
+    /**
+     * 兼容测试的获取路径方法
+     */
+    public Path getPath() {
+        return this.filePath;
+    }
+
+    private static EventType fromType(Type type) {
+        return switch (type) {
+            case CREATE -> EventType.CREATE;
+            case MODIFY -> EventType.MODIFY;
+            case DELETE -> EventType.DELETE;
+            default -> EventType.UNKNOWN;
+        };
+    }
+
+    private static Type toType(EventType eventType) {
+        return switch (eventType) {
+            case CREATE -> Type.CREATE;
+            case MODIFY -> Type.MODIFY;
+            case DELETE -> Type.DELETE;
+            default -> Type.UNKNOWN;
+        };
     }
     
     /**

@@ -10,6 +10,7 @@ import org.apache.hc.client5.http.classic.methods.HttpPost;
 import org.apache.hc.client5.http.impl.classic.CloseableHttpClient;
 import org.apache.hc.client5.http.impl.classic.CloseableHttpResponse;
 import org.apache.hc.core5.http.ClassicHttpResponse;
+import org.apache.hc.core5.http.io.HttpClientResponseHandler;
 import org.apache.hc.core5.http.HttpEntity;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -76,12 +77,12 @@ class FileApiClientTest {
         String responseJson = objectMapper.writerFor(new TypeReference<ApiResponse<List<FileResponse>>>() {})
                 .writeValueAsString(apiResponse);
 
-        when(httpClient.execute(any(HttpGet.class), any())).thenAnswer(invocation -> {
+        when(httpClient.execute(any(HttpGet.class), any(HttpClientResponseHandler.class))).thenAnswer(invocation -> {
             Object handler = invocation.getArgument(1);
-            if (handler instanceof org.apache.hc.client5.http.classic.HttpClientResponseHandler) {
+            if (handler instanceof HttpClientResponseHandler) {
                 @SuppressWarnings("unchecked")
-                org.apache.hc.client5.http.classic.HttpClientResponseHandler<List<FileResponse>> responseHandler =
-                    (org.apache.hc.client5.http.classic.HttpClientResponseHandler<List<FileResponse>>) handler;
+                HttpClientResponseHandler<List<FileResponse>> responseHandler =
+                    (HttpClientResponseHandler<List<FileResponse>>) handler;
                 
                 when(httpResponse.getCode()).thenReturn(200);
                 when(httpResponse.getEntity()).thenReturn(httpEntity);
@@ -98,7 +99,7 @@ class FileApiClientTest {
         // Then
         assertNotNull(result);
         assertEquals(2, result.size());
-        verify(httpClient, atLeastOnce()).execute(any(HttpGet.class), any());
+        verify(httpClient, atLeastOnce()).execute(any(HttpGet.class), any(HttpClientResponseHandler.class));
     }
 
     @Test
@@ -111,12 +112,12 @@ class FileApiClientTest {
         String responseJson = objectMapper.writerFor(new TypeReference<ApiResponse<List<FileResponse>>>() {})
                 .writeValueAsString(apiResponse);
 
-        when(httpClient.execute(any(HttpGet.class), any())).thenAnswer(invocation -> {
+        when(httpClient.execute(any(HttpGet.class), any(HttpClientResponseHandler.class))).thenAnswer(invocation -> {
             Object handler = invocation.getArgument(1);
-            if (handler instanceof org.apache.hc.client5.http.classic.HttpClientResponseHandler) {
+            if (handler instanceof HttpClientResponseHandler) {
                 @SuppressWarnings("unchecked")
-                org.apache.hc.client5.http.classic.HttpClientResponseHandler<List<FileResponse>> responseHandler =
-                    (org.apache.hc.client5.http.classic.HttpClientResponseHandler<List<FileResponse>>) handler;
+                HttpClientResponseHandler<List<FileResponse>> responseHandler =
+                    (HttpClientResponseHandler<List<FileResponse>>) handler;
                 
                 when(httpResponse.getCode()).thenReturn(200);
                 when(httpResponse.getEntity()).thenReturn(httpEntity);
@@ -145,12 +146,12 @@ class FileApiClientTest {
 
         String responseJson = objectMapper.writeValueAsString(apiResponse);
 
-        when(httpClient.execute(any(HttpDelete.class), any())).thenAnswer(invocation -> {
+        when(httpClient.execute(any(HttpDelete.class), any(HttpClientResponseHandler.class))).thenAnswer(invocation -> {
             Object handler = invocation.getArgument(1);
-            if (handler instanceof org.apache.hc.client5.http.classic.HttpClientResponseHandler) {
+            if (handler instanceof HttpClientResponseHandler) {
                 @SuppressWarnings("unchecked")
-                org.apache.hc.client5.http.classic.HttpClientResponseHandler<Boolean> responseHandler =
-                    (org.apache.hc.client5.http.classic.HttpClientResponseHandler<Boolean>) handler;
+                HttpClientResponseHandler<Boolean> responseHandler =
+                    (HttpClientResponseHandler<Boolean>) handler;
                 
                 when(httpResponse.getCode()).thenReturn(200);
                 when(httpResponse.getEntity()).thenReturn(httpEntity);
@@ -166,7 +167,7 @@ class FileApiClientTest {
 
         // Then
         assertTrue(result);
-        verify(httpClient, atLeastOnce()).execute(any(HttpDelete.class), any());
+        verify(httpClient, atLeastOnce()).execute(any(HttpDelete.class), any(HttpClientResponseHandler.class));
     }
 
     @Test
@@ -174,12 +175,12 @@ class FileApiClientTest {
         // Given
         String fileId = "file-id-123";
 
-        when(httpClient.execute(any(HttpDelete.class), any())).thenAnswer(invocation -> {
+        when(httpClient.execute(any(HttpDelete.class), any(HttpClientResponseHandler.class))).thenAnswer(invocation -> {
             Object handler = invocation.getArgument(1);
-            if (handler instanceof org.apache.hc.client5.http.classic.HttpClientResponseHandler) {
+            if (handler instanceof HttpClientResponseHandler) {
                 @SuppressWarnings("unchecked")
-                org.apache.hc.client5.http.classic.HttpClientResponseHandler<Boolean> responseHandler =
-                    (org.apache.hc.client5.http.classic.HttpClientResponseHandler<Boolean>) handler;
+                HttpClientResponseHandler<Boolean> responseHandler =
+                    (HttpClientResponseHandler<Boolean>) handler;
                 
                 when(httpResponse.getCode()).thenReturn(401);
                 

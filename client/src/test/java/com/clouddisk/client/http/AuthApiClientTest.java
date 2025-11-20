@@ -8,6 +8,7 @@ import org.apache.hc.client5.http.classic.methods.HttpPost;
 import org.apache.hc.client5.http.impl.classic.CloseableHttpClient;
 import org.apache.hc.client5.http.impl.classic.CloseableHttpResponse;
 import org.apache.hc.core5.http.ClassicHttpResponse;
+import org.apache.hc.core5.http.io.HttpClientResponseHandler;
 import org.apache.hc.core5.http.HttpEntity;
 import org.apache.hc.core5.http.io.entity.StringEntity;
 import org.junit.jupiter.api.BeforeEach;
@@ -67,13 +68,13 @@ class AuthApiClientTest {
         apiResponse.setData(authResponse);
 
         String responseJson = objectMapper.writeValueAsString(apiResponse);
-        when(httpClient.execute(any(HttpPost.class), any())).thenAnswer(invocation -> {
+        when(httpClient.execute(any(HttpPost.class), any(HttpClientResponseHandler.class))).thenAnswer(invocation -> {
             // 模拟响应处理器
             Object handler = invocation.getArgument(1);
-            if (handler instanceof org.apache.hc.client5.http.classic.HttpClientResponseHandler) {
+            if (handler instanceof HttpClientResponseHandler) {
                 @SuppressWarnings("unchecked")
-                org.apache.hc.client5.http.classic.HttpClientResponseHandler<AuthResponse> responseHandler =
-                    (org.apache.hc.client5.http.classic.HttpClientResponseHandler<AuthResponse>) handler;
+                HttpClientResponseHandler<AuthResponse> responseHandler =
+                    (HttpClientResponseHandler<AuthResponse>) handler;
                 
                 when(httpResponse.getCode()).thenReturn(200);
                 when(httpResponse.getEntity()).thenReturn(httpEntity);
@@ -89,7 +90,7 @@ class AuthApiClientTest {
 
         // Then
         assertNotNull(result);
-        verify(httpClient, atLeastOnce()).execute(any(HttpPost.class), any());
+        verify(httpClient, atLeastOnce()).execute(any(HttpPost.class), any(HttpClientResponseHandler.class));
     }
 
     @Test
@@ -106,12 +107,12 @@ class AuthApiClientTest {
         apiResponse.setData(authResponse);
 
         String responseJson = objectMapper.writeValueAsString(apiResponse);
-        when(httpClient.execute(any(HttpPost.class), any())).thenAnswer(invocation -> {
+        when(httpClient.execute(any(HttpPost.class), any(HttpClientResponseHandler.class))).thenAnswer(invocation -> {
             Object handler = invocation.getArgument(1);
-            if (handler instanceof org.apache.hc.client5.http.classic.HttpClientResponseHandler) {
+            if (handler instanceof HttpClientResponseHandler) {
                 @SuppressWarnings("unchecked")
-                org.apache.hc.client5.http.classic.HttpClientResponseHandler<AuthResponse> responseHandler =
-                    (org.apache.hc.client5.http.classic.HttpClientResponseHandler<AuthResponse>) handler;
+                HttpClientResponseHandler<AuthResponse> responseHandler =
+                    (HttpClientResponseHandler<AuthResponse>) handler;
                 
                 when(httpResponse.getCode()).thenReturn(200);
                 when(httpResponse.getEntity()).thenReturn(httpEntity);
@@ -145,12 +146,12 @@ class AuthApiClientTest {
         apiResponse.setData(authResponse);
 
         String responseJson = objectMapper.writeValueAsString(apiResponse);
-        when(httpClient.execute(any(HttpPost.class), any())).thenAnswer(invocation -> {
+        when(httpClient.execute(any(HttpPost.class), any(HttpClientResponseHandler.class))).thenAnswer(invocation -> {
             Object handler = invocation.getArgument(1);
-            if (handler instanceof org.apache.hc.client5.http.classic.HttpClientResponseHandler) {
+            if (handler instanceof HttpClientResponseHandler) {
                 @SuppressWarnings("unchecked")
-                org.apache.hc.client5.http.classic.HttpClientResponseHandler<AuthResponse> responseHandler =
-                    (org.apache.hc.client5.http.classic.HttpClientResponseHandler<AuthResponse>) handler;
+                HttpClientResponseHandler<AuthResponse> responseHandler =
+                    (HttpClientResponseHandler<AuthResponse>) handler;
                 
                 when(httpResponse.getCode()).thenReturn(200);
                 when(httpResponse.getEntity()).thenReturn(httpEntity);
@@ -166,7 +167,7 @@ class AuthApiClientTest {
 
         // Then
         assertTrue(result);
-        verify(httpClient, atLeastOnce()).execute(any(HttpPost.class), any());
+        verify(httpClient, atLeastOnce()).execute(any(HttpPost.class), any(HttpClientResponseHandler.class));
     }
 
     @Test
@@ -175,7 +176,7 @@ class AuthApiClientTest {
         String email = "test@example.com";
         String password = "password123";
 
-        when(httpClient.execute(any(HttpPost.class), any())).thenThrow(new IOException("Connection error"));
+        when(httpClient.execute(any(HttpPost.class), any(HttpClientResponseHandler.class))).thenThrow(new IOException("Connection error"));
 
         // When
         boolean result = authApiClient.register(email, password);
@@ -191,7 +192,7 @@ class AuthApiClientTest {
         String password = "password123";
 
         // 前两次失败，第三次成功
-        when(httpClient.execute(any(HttpPost.class), any()))
+        when(httpClient.execute(any(HttpPost.class), any(HttpClientResponseHandler.class)))
                 .thenThrow(new IOException("Network error"))
                 .thenThrow(new IOException("Network error"))
                 .thenAnswer(invocation -> {
@@ -204,10 +205,10 @@ class AuthApiClientTest {
 
                     String responseJson = objectMapper.writeValueAsString(apiResponse);
                     Object handler = invocation.getArgument(1);
-                    if (handler instanceof org.apache.hc.client5.http.classic.HttpClientResponseHandler) {
+                    if (handler instanceof HttpClientResponseHandler) {
                         @SuppressWarnings("unchecked")
-                        org.apache.hc.client5.http.classic.HttpClientResponseHandler<AuthResponse> responseHandler =
-                            (org.apache.hc.client5.http.classic.HttpClientResponseHandler<AuthResponse>) handler;
+                        HttpClientResponseHandler<AuthResponse> responseHandler =
+                            (HttpClientResponseHandler<AuthResponse>) handler;
                         
                         when(httpResponse.getCode()).thenReturn(200);
                         when(httpResponse.getEntity()).thenReturn(httpEntity);
@@ -224,7 +225,7 @@ class AuthApiClientTest {
         // Then
         assertNotNull(result);
         // 验证重试了3次
-        verify(httpClient, atLeast(3)).execute(any(HttpPost.class), any());
+        verify(httpClient, atLeast(3)).execute(any(HttpPost.class), any(HttpClientResponseHandler.class));
     }
 }
 
