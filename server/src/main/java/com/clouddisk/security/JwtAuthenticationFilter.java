@@ -65,7 +65,7 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
                 }
             }
         } catch (Exception ex) {
-            log.warn("JWT authentication failed: {}", ex.getMessage());
+            log.warn("JWT authentication failed: {} {}", ex.getClass().getSimpleName(), ex.getMessage());
         }
         filterChain.doFilter(request, response);
     }
