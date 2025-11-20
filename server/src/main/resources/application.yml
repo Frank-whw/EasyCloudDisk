@@ -42,7 +42,9 @@ jwt:
 
 app:
   cors:
-    allowed-origins: ${APP_CORS_ALLOWED_ORIGINS:http://localhost:3000}
+    # 允许的跨域来源，支持多个来源（用逗号分隔）
+    # 开发环境：包含localhost和0.0.0.0
+    allowed-origins: ${APP_CORS_ALLOWED_ORIGINS:http://localhost:3000,http://0.0.0.0:3000,http://127.0.0.1:3000}
     allow-credentials: ${APP_CORS_ALLOW_CREDENTIALS:false}
 
 # AWS配置（通用）
