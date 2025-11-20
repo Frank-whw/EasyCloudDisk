@@ -48,145 +48,195 @@ check_java() {
         exit 1
     fi
     
-    JAVA_VERSION=$(java -version 2>&1 | head -n 1 | cut -d'"' -f2)
+    JAVA_VERSION=$(java -version 2>&1 | head -n 1)
     log "Java 版本: $JAVA_VERSION"
 }
 
-check_jar() {
+get_pid() {
+    if [ -f "$PID_FILE" ]; then
+        cat "$PID_FILE"
+    else
+        echo ""
+    fi
+}
+
+is_running() {
+    local pid=$(get_pid)
+    if [ -n "$pid" ] && ps -p "$pid" > /dev/null 2>&1; then
+        return 0
+    else
+        return 1
+    fi
+}
+
+start() {
+    log "========== 启动应用 =========="
+    
+    check_java
+    
+    if is_running; then
+        log "应用已经在运行 (PID: $(get_pid))"
+        return 0
+    fi
+    
     if [ ! -f "$JAR_FILE" ]; then
         log "错误: JAR 文件不存在: $JAR_FILE"
         exit 1
     fi
     
-    JAR_SIZE=$(du -h "$JAR_FILE" | cut -f1)
-    log "JAR 文件: $JAR_FILE (大小: $JAR_SIZE)"
-}
-
-stop_existing() {
-    if [ -f "$PID_FILE" ]; then
-        OLD_PID=$(cat "$PID_FILE")
-        if ps -p "$OLD_PID" > /dev/null 2>&1; then
-            log "停止现有进程 (PID: $OLD_PID)..."
-            kill "$OLD_PID"
-            
-            # 等待进程停止
-            for i in {1..30}; do
-                if ! ps -p "$OLD_PID" > /dev/null 2>&1; then
-                    log "进程已停止"
-                    break
-                fi
-                sleep 1
-            done
-            
-            # 强制杀死进程
-            if ps -p "$OLD_PID" > /dev/null 2>&1; then
-                log "强制停止进程..."
-                kill -9 "$OLD_PID"
-            fi
-        fi
-        rm -f "$PID_FILE"
-    fi
-    
-    # 查找并停止可能的僵尸进程
-    ZOMBIE_PIDS=$(pgrep -f "$JAR_FILE" || true)
-    if [ -n "$ZOMBIE_PIDS" ]; then
-        log "发现僵尸进程，正在清理..."
-        echo "$ZOMBIE_PIDS" | xargs kill -9 2>/dev/null || true
-    fi
-}
-
-start_app() {
-    log "启动应用..."
-    
-    # 构建启动命令
-    CMD="java $JVM_OPTS"
-    CMD="$CMD -Dserver.port=$SERVER_PORT"
-    CMD="$CMD -Dfile.encoding=UTF-8"
-    CMD="$CMD -Djava.security.egd=file:/dev/./urandom"
-    CMD="$CMD -jar $JAR_FILE"
-    
-    log "启动命令: $CMD"
+    log "启动应用: $JAR_FILE"
+    log "JVM 参数: $JVM_OPTS"
+    log "日志文件: $LOG_FILE"
     
     # 启动应用
-    nohup $CMD > "$LOG_FILE" 2>&1 &
-    APP_PID=$!
+    nohup java $JVM_OPTS -jar "$JAR_FILE" \
+        --server.port=$SERVER_PORT \
+        > "$LOG_FILE" 2>&1 &
     
-    # 保存 PID
-    echo "$APP_PID" > "$PID_FILE"
-    log "应用已启动 (PID: $APP_PID)"
+    local pid=$!
+    echo $pid > "$PID_FILE"
     
-    # 等待应用启动
-    log "等待应用启动..."
-    return 1
+    log "应用已启动 (PID: $pid)"
+    
+    # 等待启动
+    sleep 5
+    
+    if is_running; then
+        log "✓ 应用启动成功"
+        log "端口: $SERVER_PORT"
+        log "PID: $(get_pid)"
+        log "日志: tail -f $LOG_FILE"
+    else
+        log "✗ 应用启动失败"
+        log "查看日志:"
+        tail -n 50 "$LOG_FILE"
+        exit 1
+    fi
 }
 
-show_status() {
-    if [ -f "$PID_FILE" ]; then
-        PID=$(cat "$PID_FILE")
-        if ps -p "$PID" > /dev/null 2>&1; then
-            log "应用正在运行 (PID: $PID)"
-            
-            # 显示内存使用情况
-            MEMORY=$(ps -p "$PID" -o rss= | awk '{print int($1/1024)"MB"}')
-            log "内存使用: $MEMORY"
-            
-            # 显示端口监听情况
-            if netstat -tlnp 2>/dev/null | grep ":$SERVER_PORT " > /dev/null; then
-                log "端口监听: $SERVER_PORT"
-            fi
+stop() {
+    log "========== 停止应用 =========="
+    
+    if ! is_running; then
+        log "应用未运行"
+        rm -f "$PID_FILE"
+        return 0
+    fi
+    
+    local pid=$(get_pid)
+    log "停止应用 (PID: $pid)"
+    
+    # 优雅停止
+    kill $pid
+    
+    # 等待停止
+    local count=0
+    while is_running && [ $count -lt 30 ]; do
+        sleep 1
+        count=$((count + 1))
+        log "等待应用停止... ($count/30)"
+    done
+    
+    # 强制停止
+    if is_running; then
+        log "强制停止应用"
+        kill -9 $pid
+        sleep 2
+    fi
+    
+    rm -f "$PID_FILE"
+    
+    if is_running; then
+        log "✗ 应用停止失败"
+        exit 1
+    else
+        log "✓ 应用已停止"
+    fi
+}
+
+restart() {
+    log "========== 重启应用 =========="
+    stop
+    sleep 2
+    start
+}
+
+status() {
+    log "========== 应用状态 =========="
+    
+    if is_running; then
+        local pid=$(get_pid)
+        log "✓ 应用正在运行"
+        log "PID: $pid"
+        log "端口: $SERVER_PORT"
+        
+        # 显示进程信息
+        ps -p $pid -o pid,ppid,cmd,%mem,%cpu,etime
+        
+        # 检查端口
+        if netstat -tuln | grep ":$SERVER_PORT " > /dev/null 2>&1; then
+            log "✓ 端口 $SERVER_PORT 正在监听"
         else
-            log "应用未运行（PID 文件存在但进程不存在）"
-            rm -f "$PID_FILE"
+            log "✗ 端口 $SERVER_PORT 未监听"
         fi
     else
-        log "应用未运行"
+        log "✗ 应用未运行"
+        if [ -f "$PID_FILE" ]; then
+            log "发现残留的 PID 文件，已清理"
+            rm -f "$PID_FILE"
+        fi
     fi
 }
 
-show_logs() {
-    if [ -f "$LOG_FILE" ]; then
-        log "最近的应用日志："
-        tail -n 20 "$LOG_FILE"
-    else
+logs() {
+    if [ ! -f "$LOG_FILE" ]; then
         log "日志文件不存在: $LOG_FILE"
+        exit 1
     fi
+    
+    tail -f "$LOG_FILE"
+}
+
+show_help() {
+    echo "EasyCloudDisk Server 启动脚本"
+    echo ""
+    echo "用法: $0 {start|stop|restart|status|logs}"
+    echo ""
+    echo "命令:"
+    echo "  start   - 启动应用"
+    echo "  stop    - 停止应用"
+    echo "  restart - 重启应用"
+    echo "  status  - 查看应用状态"
+    echo "  logs    - 查看应用日志"
+    echo ""
+    echo "配置:"
+    echo "  JAR 文件: $JAR_FILE"
+    echo "  PID 文件: $PID_FILE"
+    echo "  日志文件: $LOG_FILE"
+    echo "  服务端口: $SERVER_PORT"
 }
 
 # ==================== 主流程 ====================
-case "${1:-start}" in
+case "$1" in
     start)
-        log "==================== 启动 $APP_NAME ===================="
-        check_java
-        check_jar
-        stop_existing
-        start_app
-        show_status
+        start
         ;;
     stop)
-        log "==================== 停止 $APP_NAME ===================="
-        stop_existing
+        stop
         ;;
     restart)
-        log "==================== 重启 $APP_NAME ===================="
-        check_java
-        check_jar
-        stop_existing
-        start_app
-        show_status
+        restart
         ;;
     status)
-        show_status
+        status
         ;;
     logs)
-        show_logs
+        logs
         ;;
     *)
-        echo "用法: $0 {start|stop|restart|status|logs}"
-        echo "  start   - 启动应用"
-        echo "  stop    - 停止应用"
-        echo "  restart - 重启应用"
-        echo "  status  - 查看状态"
-        echo "  logs    - 查看日志"
+        show_help
         exit 1
         ;;
 esac
+
+exit 0

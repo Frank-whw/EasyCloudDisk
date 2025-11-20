@@ -16,8 +16,10 @@ import org.springframework.web.multipart.MultipartFile;
 
 import java.io.ByteArrayOutputStream;
 import java.io.IOException;
+import java.time.Instant;
 import java.time.LocalDateTime;
 import java.util.List;
+import java.util.Optional;
 import java.util.stream.Collectors;
 
 /**
@@ -52,9 +54,71 @@ public class AdvancedUploadService {
      * @return 如果存在相同哈希的文件则返回true
      */
     public boolean checkQuickUpload(String hash, String userId) {
-        return fileRepository.findFirstByContentHash(hash)
-                .map(file -> !file.isDirectory())
-                .orElse(false);
+        try {
+            if (hash == null || hash.trim().isEmpty()) {
+                log.warn("检查秒传时哈希值为空");
+                return false;
+            }
+            
+            Optional<FileEntity> fileOpt = fileRepository.findFirstByContentHash(hash);
+            if (fileOpt.isPresent()) {
+                FileEntity file = fileOpt.get();
+                boolean canQuickUpload = !file.isDirectory();
+                log.debug("找到匹配哈希的文件: fileId={}, isDirectory={}, canQuickUpload={}", 
+                    file.getFileId(), file.isDirectory(), canQuickUpload);
+                return canQuickUpload;
+            }
+            
+            log.debug("未找到匹配哈希的文件: hash={}", hash);
+            return false;
+            
+        } catch (Exception e) {
+            log.error("检查秒传时发生异常: hash={}, userId={}", hash, userId, e);
+            // 出错时返回false，让客户端正常上传
+            return false;
+        }
+    }
+    
+    /**
+     * S3直接上传后创建文件记录
+     * @param contentHash 文件内容哈希
+     * @param filePath 文件路径
+     * @param fileName 文件名
+     * @param fileSize 文件大小
+     * @param userId 用户ID
+     * @return 文件元数据
+     */
+    @Transactional
+    public FileMetadataDto createFileAfterS3Upload(String contentHash, String filePath, 
+                                                    String fileName, Long fileSize, String userId) {
+        log.info("S3上传后创建文件记录: fileName={}, hash={}, size={}", fileName, contentHash, fileSize);
+        
+        // 构建S3存储key (格式: files/{hash}.{extension})
+        String extension = "";
+        int dotIndex = fileName.lastIndexOf('.');
+        if (dotIndex > 0) {
+            extension = fileName.substring(dotIndex);
+        }
+        String storageKey = "files/" + contentHash + extension;
+        
+        // 创建文件实体
+        FileEntity file = new FileEntity();
+        file.setUserId(userId);
+        file.setName(fileName);
+        file.setDirectoryPath(filePath);
+        file.setFileSize(fileSize);
+        file.setContentHash(contentHash);
+        file.setStorageKey(storageKey);
+        file.setVersion(1);
+        file.setDirectory(false);
+        // createdAt 和 updatedAt 由 @PrePersist 自动设置
+        
+        // 保存到数据库
+        file = fileRepository.save(file);
+        
+        log.info("文件记录创建成功: fileId={}, storageKey={}", file.getFileId(), storageKey);
+        
+        return toDto(file);
     }
     
     /**

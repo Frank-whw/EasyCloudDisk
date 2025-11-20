@@ -2,7 +2,7 @@ server:
   port: 8080
   address: 0.0.0.0  # 绑定到所有网络接口，允许外部访问
   servlet:
-    context-path: /
+    context-path: /api
 
 spring:
   application:
@@ -43,17 +43,17 @@ jwt:
 app:
   cors:
     # 允许的跨域来源，支持多个来源（用逗号分隔）
-    # 开发环境：包含localhost和0.0.0.0
+    # 默认开放本地开发常用端口，如需生产环境请通过 APP_CORS_ALLOWED_ORIGINS 覆盖
     allowed-origins: ${APP_CORS_ALLOWED_ORIGINS:http://localhost:3000,http://0.0.0.0:3000,http://127.0.0.1:3000}
-    allow-credentials: ${APP_CORS_ALLOW_CREDENTIALS:false}
+    allow-credentials: ${APP_CORS_ALLOW_CREDENTIALS:true}
 
 # AWS配置（通用）
 aws:
-  access-key-id: ${AWS_ACCESS_KEY_ID:your-access-key-id}
-  secret-access-key: ${AWS_SECRET_ACCESS_KEY:your-secret-access-key}
-  region: ${AWS_REGION:us-east-1}
+  access-key-id: ${AWS_ACCESS_KEY_ID:AKIARCSPQ2MSDC2UES4A}
+  secret-access-key: ${AWS_SECRET_ACCESS_KEY:NUdbNv9UTGUZznbTAGfS3WCuqp/A2t8P8t52+kYN}
+  region: ${AWS_REGION:ap-east-1}
   s3:
-    bucket-name: ${AWS_S3_BUCKET:clouddisk-bucket}
+    bucket-name: ${AWS_S3_BUCKET:ecnu-cloudsys}
     endpoint: ${AWS_S3_ENDPOINT:}  # 可选，用于MinIO等兼容S3服务
     path-style: ${AWS_S3_PATH_STYLE:false}
     multipart:

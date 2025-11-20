@@ -14,7 +14,7 @@ NC='\033[0m' # No Color
 API_BASE_URL="${API_BASE_URL:-http://localhost:8080}"
 TEST_NAME="用户注册测试"
 
-# 生成唯一的测试数据（时间戳+随机数）
+# 生成唯一的测试数据（时间戳或随机数）
 TIMESTAMP=$(date +%s)
 RANDOM_NUM=$((RANDOM % 10000))
 TEST_EMAIL="test_${TIMESTAMP}_${RANDOM_NUM}@example.com"
@@ -98,4 +98,3 @@ else
     echo "HTTP 状态码: $HTTP_CODE (期望: 200)"
     exit 1
 fi
-

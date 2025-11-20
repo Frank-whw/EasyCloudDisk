@@ -41,7 +41,7 @@ echo "$TEST_FILE_CONTENT" > "$TEMP_FILE"
 echo "=========================================="
 echo "开始测试: $TEST_NAME"
 echo "=========================================="
-echo "文件名: $TEST_FILE_NAME"
+echo "文件名称: $TEST_FILE_NAME"
 echo "文件路径: $TEST_FILE_PATH"
 echo "文件大小: $(wc -c < "$TEMP_FILE") 字节"
 echo ""
@@ -90,7 +90,7 @@ if [ "$HTTP_CODE" = "200" ]; then
             # 打印详细信息用于调试
             echo -e "${GREEN}✓ HTTP 响应成功${NC}"
             echo "File ID: $FILE_ID"
-            echo "文件名: $TEST_FILE_NAME"
+            echo "文件名称: $TEST_FILE_NAME"
             [ -n "$S3_KEY" ] && echo "S3 Key: $S3_KEY"
             [ -n "$STORAGE_KEY" ] && echo "Storage Key: $STORAGE_KEY"
             [ -n "$FILE_SIZE" ] && echo "文件大小: $FILE_SIZE 字节"
@@ -158,4 +158,3 @@ else
     echo "HTTP 状态码: $HTTP_CODE (期望: 200)"
     exit 1
 fi
-

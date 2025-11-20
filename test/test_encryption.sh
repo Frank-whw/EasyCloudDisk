@@ -56,7 +56,7 @@ ENCRYPTED_FILE=$(mktemp)
 cat "$ORIGINAL_FILE" > "$ENCRYPTED_FILE"
 ENCRYPTED_SIZE=$(wc -c < "$ENCRYPTED_FILE")
 
-echo "文件名: $TEST_FILE_NAME"
+echo "文件名称: $TEST_FILE_NAME"
 echo "原始大小: $ORIGINAL_SIZE 字节"
 echo "加密后大小: $ENCRYPTED_SIZE 字节"
 echo "原始哈希: $ORIGINAL_HASH"
@@ -169,4 +169,3 @@ fi
 echo -e "${GREEN}✓ 测试通过: $TEST_NAME${NC}"
 echo "数据加密功能测试完成"
 exit 0
-

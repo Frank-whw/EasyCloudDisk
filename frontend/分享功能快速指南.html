@@ -1,0 +1,261 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>文件分享快速指南 - EasyCloudDisk</title>
+    <style>
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+            max-width: 800px;
+            margin: 0 auto;
+            padding: 20px;
+            line-height: 1.6;
+            background: #f5f7fa;
+        }
+        
+        .guide-container {
+            background: white;
+            border-radius: 12px;
+            padding: 30px;
+            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+        }
+        
+        h1 {
+            color: #667eea;
+            text-align: center;
+            margin-bottom: 30px;
+            font-size: 28px;
+        }
+        
+        .step {
+            margin: 25px 0;
+            padding: 20px;
+            border: 2px solid #e5e7eb;
+            border-radius: 8px;
+            position: relative;
+        }
+        
+        .step-number {
+            position: absolute;
+            top: -12px;
+            left: 20px;
+            background: #667eea;
+            color: white;
+            width: 24px;
+            height: 24px;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-weight: bold;
+            font-size: 14px;
+        }
+        
+        .step h3 {
+            margin-top: 0;
+            color: #333;
+            font-size: 18px;
+        }
+        
+        .step p {
+            margin: 10px 0;
+            color: #666;
+        }
+        
+        .highlight {
+            background: #fef3c7;
+            padding: 3px 6px;
+            border-radius: 4px;
+            font-weight: 500;
+        }
+        
+        .screenshot-placeholder {
+            background: #f3f4f6;
+            border: 2px dashed #d1d5db;
+            border-radius: 8px;
+            padding: 40px;
+            text-align: center;
+            color: #6b7280;
+            margin: 15px 0;
+        }
+        
+        .tips {
+            background: #dbeafe;
+            border-left: 4px solid #3b82f6;
+            padding: 15px;
+            margin: 20px 0;
+            border-radius: 0 8px 8px 0;
+        }
+        
+        .tips h4 {
+            margin: 0 0 10px 0;
+            color: #1e40af;
+        }
+        
+        .warning {
+            background: #fef2f2;
+            border-left: 4px solid #ef4444;
+            padding: 15px;
+            margin: 20px 0;
+            border-radius: 0 8px 8px 0;
+        }
+        
+        .warning h4 {
+            margin: 0 0 10px 0;
+            color: #dc2626;
+        }
+        
+        .button-demo {
+            display: inline-block;
+            background: #667eea;
+            color: white;
+            padding: 8px 16px;
+            border-radius: 6px;
+            text-decoration: none;
+            font-size: 14px;
+            margin: 5px;
+        }
+        
+        .button-demo.secondary {
+            background: #6c757d;
+        }
+        
+        .quick-links {
+            background: #f8f9fa;
+            padding: 20px;
+            border-radius: 8px;
+            margin-top: 30px;
+            text-align: center;
+        }
+        
+        .quick-links a {
+            display: inline-block;
+            margin: 10px;
+            padding: 12px 24px;
+            background: #667eea;
+            color: white;
+            text-decoration: none;
+            border-radius: 6px;
+            font-weight: 500;
+        }
+        
+        .quick-links a:hover {
+            background: #5568d3;
+        }
+    </style>
+</head>
+<body>
+    <div class="guide-container">
+        <h1>📤 文件分享快速指南</h1>
+        
+        <div class="step">
+            <div class="step-number">1</div>
+            <h3>登录并上传文件</h3>
+            <p>首先确保你已经登录系统，并且有文件可以分享。如果还没有文件，请先上传一些文件。</p>
+            <div class="screenshot-placeholder">
+                <i style="font-size: 24px;">📁</i><br>
+                在主界面点击"上传文件"按钮上传你想要分享的文件
+            </div>
+        </div>
+        
+        <div class="step">
+            <div class="step-number">2</div>
+            <h3>找到分享按钮</h3>
+            <p>在文件列表中，每个文件都有操作按钮。找到你想分享的文件，点击 <span class="highlight">🔗 分享</span> 按钮。</p>
+            <div class="screenshot-placeholder">
+                <div style="display: flex; gap: 10px; justify-content: center; align-items: center;">
+                    <span class="button-demo">📥 下载</span>
+                    <span class="button-demo secondary">🔗 分享</span>
+                    <span class="button-demo" style="background: #dc3545;">🗑️ 删除</span>
+                </div>
+                <p style="margin-top: 15px;">点击灰色的"分享"按钮</p>
+            </div>
+        </div>
+        
+        <div class="step">
+            <div class="step-number">3</div>
+            <h3>配置分享设置</h3>
+            <p>在弹出的分享对话框中，你可以设置以下选项：</p>
+            <ul>
+                <li><strong>分享名称</strong>：显示给访问者的文件名（可选）</li>
+                <li><strong>分享描述</strong>：对分享内容的说明（可选）</li>
+                <li><strong>访问权限</strong>：
+                    <ul>
+                        <li>只读 - 只能查看信息</li>
+                        <li>仅下载 - 只能下载文件</li>
+                        <li>读写 - 完整访问权限</li>
+                    </ul>
+                </li>
+                <li><strong>访问密码</strong>：设置密码保护（可选）</li>
+                <li><strong>过期时间</strong>：设置分享有效期（可选）</li>
+                <li><strong>最大下载次数</strong>：限制下载次数（可选）</li>
+            </ul>
+        </div>
+        
+        <div class="step">
+            <div class="step-number">4</div>
+            <h3>创建并复制分享链接</h3>
+            <p>点击 <span class="highlight">创建分享</span> 按钮后，系统会生成一个分享链接。你可以：</p>
+            <ul>
+                <li>点击 <span class="highlight">复制链接</span> 按钮复制到剪贴板</li>
+                <li>将链接发送给需要访问文件的人</li>
+                <li>如果设置了密码，记得告诉对方密码</li>
+            </ul>
+        </div>
+        
+        <div class="step">
+            <div class="step-number">5</div>
+            <h3>管理你的分享</h3>
+            <p>在侧边栏点击 <span class="highlight">📤 我的分享</span> 可以：</p>
+            <ul>
+                <li>查看所有创建的分享</li>
+                <li>查看分享状态和下载统计</li>
+                <li>复制分享链接</li>
+                <li>取消不需要的分享</li>
+            </ul>
+        </div>
+        
+        <div class="tips">
+            <h4>💡 使用技巧</h4>
+            <ul>
+                <li>建议为重要文件设置密码保护</li>
+                <li>可以设置过期时间来控制分享的有效期</li>
+                <li>通过限制下载次数来控制文件传播</li>
+                <li>定期检查"我的分享"清理不需要的分享</li>
+            </ul>
+        </div>
+        
+        <div class="warning">
+            <h4>⚠️ 注意事项</h4>
+            <ul>
+                <li>分享链接包含随机ID，请妥善保管</li>
+                <li>只有文件所有者可以创建和管理分享</li>
+                <li>取消分享后，链接将立即失效</li>
+                <li>过期的分享会自动失效</li>
+            </ul>
+        </div>
+        
+        <div class="quick-links">
+            <h3>快速链接</h3>
+            <a href="index.html">🏠 返回主应用</a>
+            <a href="test-share.html">🧪 测试分享功能</a>
+            <a href="share.html?id=demo">👀 查看分享页面示例</a>
+        </div>
+    </div>
+    
+    <script>
+        // 简单的交互效果
+        document.querySelectorAll('.step').forEach((step, index) => {
+            step.addEventListener('click', () => {
+                step.style.transform = 'scale(1.02)';
+                step.style.boxShadow = '0 8px 25px rgba(102, 126, 234, 0.15)';
+                setTimeout(() => {
+                    step.style.transform = 'scale(1)';
+                    step.style.boxShadow = 'none';
+                }, 200);
+            });
+        });
+    </script>
+</body>
+</html>

@@ -10,6 +10,7 @@ import com.clouddisk.service.EncryptionService;
 import com.clouddisk.service.FileService;
 import com.clouddisk.service.FileSyncService;
 import jakarta.validation.Valid;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.core.io.Resource;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
@@ -24,6 +25,7 @@ import java.util.Map;
 /**
  * 文件操作接口，包括上传、下载、删除及目录管理。
  */
+@Slf4j
 @RestController
 @RequestMapping("/files")
 public class FileController {
@@ -134,17 +136,42 @@ public class FileController {
     public ResponseEntity<Void> checkFileExists(
             @AuthenticationPrincipal UserPrincipal user,
             @RequestParam("contentHash") String contentHash) {
-        ensureUser(user);
-        if (contentHash == null || !contentHash.matches("[0-9a-fA-F]{64}")) {
-            return ResponseEntity.badRequest().build();
-        }
         try {
+            // 验证用户
+            ensureUser(user);
+            log.debug("检查文件存在性: userId={}, contentHash={}", user.getUserId(), contentHash);
+            
+            // 验证哈希格式
+            if (contentHash == null || contentHash.trim().isEmpty()) {
+                log.warn("哈希值为空");
+                return ResponseEntity.badRequest().build();
+            }
+            
+            if (!contentHash.matches("[0-9a-fA-F]{64}")) {
+                log.warn("哈希格式无效: {}", contentHash);
+                return ResponseEntity.badRequest().build();
+            }
+            
+            // 空文件哈希特殊处理
+            if ("e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855".equals(contentHash)) {
+                log.debug("空文件哈希，返回不存在");
+                return ResponseEntity.status(404).build();
+            }
+            
+            // 检查文件是否存在
             boolean exists = advancedUploadService.checkQuickUpload(contentHash, user.getUserId());
             if (exists) {
+                log.debug("文件已存在: contentHash={}", contentHash);
                 return ResponseEntity.ok().build();
             }
+            
+            log.debug("文件不存在: contentHash={}", contentHash);
             return ResponseEntity.status(404).build();
+            
         } catch (Exception ex) {
+            log.error("检查文件存在性时发生异常: contentHash={}, userId={}", 
+                contentHash, user != null ? user.getUserId() : "null", ex);
+            // 出错时返回404，让客户端继续上传
             return ResponseEntity.status(404).build();
         }
     }
@@ -169,20 +196,29 @@ public class FileController {
 
     /**
      * 客户端通知上传完成，兼容客户端 FileApiClient.notifyUploadComplete
+     * 用于S3直接上传后，在数据库中创建文件记录
      */
     @PostMapping("/notify-upload")
-    public ResponseEntity<ApiResponse<Map<String, Object>>> notifyUploadComplete(
+    public ResponseEntity<ApiResponse<FileMetadataDto>> notifyUploadComplete(
             @AuthenticationPrincipal UserPrincipal user,
-            @RequestBody Map<String, String> request) {
+            @RequestBody Map<String, Object> request) {
         ensureUser(user);
-        String contentHash = request.get("contentHash");
-        String filePath = request.get("filePath");
-        boolean exists = advancedUploadService.checkQuickUpload(contentHash, user.getUserId());
-        Map<String, Object> result = Map.of(
-                "exists", exists,
-                "path", filePath
-        );
-        return ResponseEntity.ok(ApiResponse.success(result));
+        String contentHash = (String) request.get("contentHash");
+        String filePath = (String) request.get("filePath");
+        String fileName = (String) request.get("fileName");
+        Long fileSize = request.get("fileSize") != null ? 
+                        Long.valueOf(request.get("fileSize").toString()) : 0L;
+        
+        // 调用服务创建文件记录
+        FileMetadataDto metadata = advancedUploadService.createFileAfterS3Upload(
+                contentHash, filePath, fileName, fileSize, user.getUserId());
+        
+        // 通知文件同步服务
+        fileSyncService.notifyChange(user.getUserId(), Map.of(
+                "type", "upload", 
+                "fileId", metadata.getFileId()));
+        
+        return ResponseEntity.ok(ApiResponse.success("文件上传完成", ErrorCode.SUCCESS.name(), metadata));
     }
 
     /**

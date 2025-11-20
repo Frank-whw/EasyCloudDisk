@@ -243,7 +243,9 @@ public class SyncManager {
                         if (s3Success) {
                             log.info("S3直接上传成功: {}", filePath);
                             // 通知服务端上传完成
-                            fileApiClient.notifyUploadComplete(contentHash, filePath.toString());
+                            String fileName = filePath.getFileName().toString();
+                            long fileSize = Files.size(filePath);
+                            fileApiClient.notifyUploadComplete(contentHash, filePath.toString(), fileName, fileSize);
                             return;
                         }
                     }

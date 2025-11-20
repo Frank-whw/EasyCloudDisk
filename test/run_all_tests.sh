@@ -4,6 +4,12 @@
 
 set +e
 
+# 加载配置文件（如果存在）
+TEST_DIR="$(cd "$(dirname "$0")" && pwd)"
+if [ -f "$TEST_DIR/config.sh" ]; then
+    source "$TEST_DIR/config.sh"
+fi
+
 GREEN='\033[0;32m'
 RED='\033[0;31m'
 YELLOW='\033[1;33m'
@@ -12,7 +18,6 @@ NC='\033[0m'
 
 # 配置
 API_BASE_URL="${API_BASE_URL:-http://localhost:8080}"
-TEST_DIR="$(cd "$(dirname "$0")" && pwd)"
 REPORT_FILE="$TEST_DIR/test_report_$(date +%Y%m%d_%H%M%S).txt"
 
 TOTAL_TESTS=0
@@ -200,4 +205,3 @@ else
     echo -e "${RED}部分测试失败，请查看报告文件获取详细信息${NC}"
     exit 1
 fi
-

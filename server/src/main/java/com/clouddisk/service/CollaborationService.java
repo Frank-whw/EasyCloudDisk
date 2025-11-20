@@ -148,7 +148,8 @@ public class CollaborationService {
                     FileEntity file = entry.getValue();
                     FileMetadataDto dto = toDto(file);
                     dto.setShared(true);
-                    dto.setPermission(share.getPermission().name());
+                    // 将 SharePermission 转换为 FileShare.SharePermission
+                    dto.setPermission(convertToFileSharePermission(share.getPermission()));
                     dto.setOwnerEmail(userEmailMap.get(file.getUserId()));
                     dto.setShareId(share.getShareId());
                     return dto;
@@ -236,6 +237,20 @@ public class CollaborationService {
             builder.append("/");
         }
         return builder.toString().replaceAll("//+", "/");
+    }
+
+    /**
+     * 将 SharePermission 转换为 FileShare.SharePermission
+     */
+    private com.clouddisk.entity.FileShare.SharePermission convertToFileSharePermission(SharePermission permission) {
+        switch (permission) {
+            case READ:
+                return com.clouddisk.entity.FileShare.SharePermission.READ_ONLY;
+            case WRITE:
+                return com.clouddisk.entity.FileShare.SharePermission.READ_WRITE;
+            default:
+                return com.clouddisk.entity.FileShare.SharePermission.READ_ONLY;
+        }
     }
 }
 

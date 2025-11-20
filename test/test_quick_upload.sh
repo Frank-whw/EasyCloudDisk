@@ -50,7 +50,7 @@ fi
 
 FILE_SIZE=$(wc -c < "$TEMP_FILE")
 
-echo "文件名: $TEST_FILE_NAME"
+echo "文件名称: $TEST_FILE_NAME"
 echo "文件哈希: $FILE_HASH"
 echo "文件大小: $FILE_SIZE 字节"
 echo ""
@@ -165,4 +165,3 @@ else
     echo "HTTP 状态码: $HTTP_CODE (期望: 200)"
     exit 1
 fi
-

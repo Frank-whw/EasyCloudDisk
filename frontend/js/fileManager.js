@@ -136,6 +136,9 @@ const fileManager = {
                     <button class="btn btn-primary btn-small" onclick="fileManager.downloadFile('${file.fileId}', '${file.name}')">
                         <i class="fas fa-download"></i> 下载
                     </button>` : ''}
+                    <button class="btn btn-secondary btn-small" onclick="shareManager.showShareDialog('${file.fileId}', '${file.name}')" title="创建分享链接">
+                        <i class="fas fa-share-alt"></i> 分享
+                    </button>
                     <button class="btn btn-danger btn-small" onclick="fileManager.deleteFile('${file.fileId}')">
                         <i class="fas fa-trash"></i> 删除
                     </button>
@@ -155,6 +158,9 @@ const fileManager = {
                     <button class="btn btn-primary btn-small" onclick="fileManager.downloadFile('${file.fileId}', '${file.name}')">
                         <i class="fas fa-download"></i> 下载
                     </button>` : ''}
+                    <button class="btn btn-secondary btn-small" onclick="shareManager.showShareDialog('${file.fileId}', '${file.name}')" title="创建分享链接">
+                        <i class="fas fa-share-alt"></i> 分享
+                    </button>
                     <button class="btn btn-danger btn-small" onclick="fileManager.deleteFile('${file.fileId}')">
                         <i class="fas fa-trash"></i> 删除
                     </button>

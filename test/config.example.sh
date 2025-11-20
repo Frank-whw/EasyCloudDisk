@@ -10,4 +10,3 @@ export API_BASE_URL="http://localhost:8080"
 # export AWS_SECRET_ACCESS_KEY="your-secret-access-key"
 # export AWS_REGION="ap-east-1"
 # export AWS_S3_BUCKET="your-bucket-name"
-

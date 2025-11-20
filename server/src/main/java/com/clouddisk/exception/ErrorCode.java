@@ -14,6 +14,7 @@ public enum ErrorCode {
     STORAGE_ERROR("存储服务异常"),
     ACCESS_DENIED("无权限访问"),
     VALIDATION_ERROR("参数校验失败"),
+    CONFLICT("文件冲突"),
     INTERNAL_ERROR("服务器内部错误");
 
     private final String message;

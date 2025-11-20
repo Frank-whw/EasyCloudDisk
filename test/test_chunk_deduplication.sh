@@ -33,16 +33,27 @@ TIMESTAMP=$(date +%s)
 RANDOM_NUM=$((RANDOM % 10000))
 TEST_CONTENT_PREFIX="Chunk deduplication test data - Timestamp: $TIMESTAMP Random: $RANDOM_NUM"
 
-# 创建测试文件（约 5MB，确保会被分块）
+# 创建测试文件（5MB，确保会被分块）
 TEST_FILE1=$(mktemp)
 TEST_FILE2=$(mktemp)
 
 echo "创建两个相同内容的测试文件（用于块级去重测试）"
-# 使用简单的方法创建大文件
-for i in {1..500}; do
-    echo "$TEST_CONTENT_PREFIX - Line $i" >> "$TEST_FILE1"
-    echo "$TEST_CONTENT_PREFIX - Line $i" >> "$TEST_FILE2"
-done
+
+# 创建5MB文件（确保超过4MB块大小阈值）
+if command -v dd > /dev/null 2>&1; then
+    dd if=/dev/zero of="$TEST_FILE1" bs=1024 count=5120 2>/dev/null
+else
+    # 如果没有 dd，使用 Python
+    python3 -c "with open('$TEST_FILE1', 'wb') as f: f.write(b'$TEST_CONTENT_PREFIX' * 65536)" 2>/dev/null || {
+        # 备用方案：多次写入
+        for i in $(seq 1 1000); do
+            printf "%s\n" "$TEST_CONTENT_PREFIX - Line $i - $(head -c 5000 /dev/zero | tr '\0' 'X')" >> "$TEST_FILE1"
+        done
+    }
+fi
+
+# 复制到第二个文件（保证内容完全相同）
+cp "$TEST_FILE1" "$TEST_FILE2"
 
 FILE1_SIZE=$(wc -c < "$TEST_FILE1")
 FILE2_SIZE=$(wc -c < "$TEST_FILE2")
@@ -83,7 +94,7 @@ echo -e "${GREEN}✓ 第一个文件上传成功${NC}"
 echo "File1 ID: $FILE1_ID"
 echo ""
 
-# 步骤 2: 上传第二个相同内容的文件
+# 步骤 2: 上传第二个相同内容的文件（应该触发块级去重）
 echo "步骤 2: 上传第二个相同内容的文件（应该触发块级去重）"
 RESPONSE=$(curl -s -w "\nHTTP_CODE:%{http_code}" \
     -X POST "$API_BASE_URL/files/upload" \
@@ -115,7 +126,7 @@ echo -e "${GREEN}✓ 第二个文件上传成功${NC}"
 echo "File2 ID: $FILE2_ID"
 echo ""
 
-# 步骤 3: 验证块级去重（通过检查S3存储键或文件元数据）
+# 步骤 3: 验证块级去重（通过检查S3存储或文件元数据）
 echo "步骤 3: 验证块级去重"
 echo "注意: 块级去重的验证需要查看数据库或S3存储"
 echo "两个文件的块应该共享相同的存储块（ref_count > 1）"
@@ -127,7 +138,7 @@ LIST_RESPONSE=$(curl -s -X GET "$API_BASE_URL/files" \
 if echo "$LIST_RESPONSE" | grep -q "$FILE1_ID" && echo "$LIST_RESPONSE" | grep -q "$FILE2_ID"; then
     echo -e "${GREEN}✓ 两个文件都已保存在系统中${NC}"
     echo ""
-    echo "块级去重验证说明："
+    echo "块级去重验证说明:"
     echo "- 如果文件大小超过块大小阈值（4MB），应该被分块存储"
     echo "- 两个相同内容的文件的块应该共享相同的存储块"
     echo "- 这可以通过检查数据库中的 file_chunks 表来验证（ref_count）"
@@ -147,4 +158,3 @@ else
     echo -e "${YELLOW}⚠ 无法验证文件是否在列表中${NC}"
     exit 1
 fi
-

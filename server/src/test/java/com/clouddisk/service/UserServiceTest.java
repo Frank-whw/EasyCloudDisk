@@ -87,7 +87,7 @@ class UserServiceTest {
             return user;
         });
         when(tokenProvider.generateToken(anyString(), any(Map.class))).thenReturn("testToken");
-        when(tokenProvider.generateRefreshToken(anyString())).thenReturn("refreshToken");
+        when(tokenProvider.generateRefreshToken(anyString(), anyInt())).thenReturn("refreshToken");
 
         // When
         AuthResponse result = userService.register(registerRequest);
@@ -128,7 +128,7 @@ class UserServiceTest {
             return user;
         });
         when(tokenProvider.generateToken(anyString(), any(Map.class))).thenReturn("testToken");
-        when(tokenProvider.generateRefreshToken(anyString())).thenReturn("refreshToken");
+        when(tokenProvider.generateRefreshToken(anyString(), anyInt())).thenReturn("refreshToken");
 
         // When
         AuthResponse result = userService.register(registerRequest);
@@ -153,7 +153,7 @@ class UserServiceTest {
         when(authentication.getPrincipal()).thenReturn(principal);
         when(userRepository.findById(userId)).thenReturn(Optional.of(testUser));
         when(tokenProvider.generateToken(anyString(), any(Map.class))).thenReturn("testToken");
-        when(tokenProvider.generateRefreshToken(anyString())).thenReturn("refreshToken");
+        when(tokenProvider.generateRefreshToken(anyString(), anyInt())).thenReturn("refreshToken");
 
         // When
         AuthResponse result = userService.login(authRequest);
@@ -196,7 +196,7 @@ class UserServiceTest {
         when(authentication.getPrincipal()).thenReturn(principal);
         when(userRepository.findById(userId)).thenReturn(Optional.of(testUser));
         when(tokenProvider.generateToken(anyString(), any(Map.class))).thenReturn("testToken");
-        when(tokenProvider.generateRefreshToken(anyString())).thenReturn("refreshToken");
+        when(tokenProvider.generateRefreshToken(anyString(), anyInt())).thenReturn("refreshToken");
 
         // When
         AuthResponse result = userService.login(authRequest);

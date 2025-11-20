@@ -1,5 +1,6 @@
 package com.clouddisk.dto;
 
+import com.clouddisk.entity.FileShare;
 import lombok.Data;
 
 import java.time.Instant;
@@ -17,21 +18,14 @@ public class FileMetadataDto {
     private String hash;
     private int version;
     private Instant updatedAt;
-    public void setShared(boolean b) {
-        // TODO Auto-generated method stub
-        throw new UnsupportedOperationException("Unimplemented method 'setShared'");
-    }
-    public void setPermission(String name2) {
-        // TODO Auto-generated method stub
-        throw new UnsupportedOperationException("Unimplemented method 'setPermission'");
-    }
-    public void setOwnerEmail(String string) {
-        // TODO Auto-generated method stub
-        throw new UnsupportedOperationException("Unimplemented method 'setOwnerEmail'");
-    }
-    public void setShareId(String shareId) {
-        // TODO Auto-generated method stub
-        throw new UnsupportedOperationException("Unimplemented method 'setShareId'");
-    }
-
+    /**
+     * 共享信息：用于前端展示协作态。
+     */
+    private boolean shared;
+    private String shareId;
+    private String ownerEmail;
+    private FileShare.SharePermission permission;
+    private String shareUrl;
+    private boolean hasSharePassword;
+    private Instant shareExpiresAt;
 }

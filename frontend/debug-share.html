@@ -1,0 +1,257 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>分享功能调试 - EasyCloudDisk</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            max-width: 1000px;
+            margin: 0 auto;
+            padding: 20px;
+            background: #f5f5f5;
+        }
+        .debug-section {
+            background: white;
+            padding: 20px;
+            margin: 20px 0;
+            border-radius: 8px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        }
+        .debug-section h2 {
+            color: #333;
+            border-bottom: 2px solid #007bff;
+            padding-bottom: 10px;
+        }
+        button {
+            background: #007bff;
+            color: white;
+            border: none;
+            padding: 10px 20px;
+            border-radius: 4px;
+            cursor: pointer;
+            margin: 5px;
+        }
+        button:hover {
+            background: #0056b3;
+        }
+        .result {
+            margin-top: 10px;
+            padding: 15px;
+            background: #f8f9fa;
+            border-radius: 4px;
+            font-family: monospace;
+            font-size: 12px;
+            white-space: pre-wrap;
+            max-height: 300px;
+            overflow-y: auto;
+        }
+        .error {
+            background: #f8d7da;
+            color: #721c24;
+        }
+        .success {
+            background: #d4edda;
+            color: #155724;
+        }
+    </style>
+</head>
+<body>
+    <h1>🔧 分享功能调试工具</h1>
+    
+    <div class="debug-section">
+        <h2>1. 环境检查</h2>
+        <button onclick="checkEnvironment()">检查环境</button>
+        <div id="envResult" class="result"></div>
+    </div>
+
+    <div class="debug-section">
+        <h2>2. API 对象检查</h2>
+        <button onclick="checkApiObject()">检查 API 对象</button>
+        <div id="apiResult" class="result"></div>
+    </div>
+
+    <div class="debug-section">
+        <h2>3. 分享管理器检查</h2>
+        <button onclick="checkShareManager()">检查分享管理器</button>
+        <div id="shareManagerResult" class="result"></div>
+    </div>
+
+    <div class="debug-section">
+        <h2>4. 手动测试分享API</h2>
+        <button onclick="testShareApi()">测试分享 API</button>
+        <div id="shareApiResult" class="result"></div>
+    </div>
+
+    <div class="debug-section">
+        <h2>5. 模拟分享操作</h2>
+        <button onclick="simulateShare()">模拟创建分享</button>
+        <button onclick="simulateGetShares()">模拟获取分享列表</button>
+        <div id="simulateResult" class="result"></div>
+    </div>
+
+    <!-- 加载脚本 -->
+    <script src="js/config.js"></script>
+    <script src="js/utils.js"></script>
+    <script src="js/api.js"></script>
+    <script src="js/shareManager.js"></script>
+
+    <script>
+        function log(elementId, message, isError = false) {
+            const element = document.getElementById(elementId);
+            element.textContent = message;
+            element.className = `result ${isError ? 'error' : 'success'}`;
+        }
+
+        function checkEnvironment() {
+            try {
+                const info = {
+                    'CONFIG 对象': typeof CONFIG !== 'undefined' ? '✅ 已加载' : '❌ 未加载',
+                    'API_BASE_URL': typeof CONFIG !== 'undefined' ? CONFIG.API_BASE_URL : '未定义',
+                    'utils 函数': typeof showAlert !== 'undefined' ? '✅ 已加载' : '❌ 未加载',
+                    '浏览器支持': {
+                        'fetch': typeof fetch !== 'undefined',
+                        'Promise': typeof Promise !== 'undefined',
+                        'localStorage': typeof localStorage !== 'undefined'
+                    }
+                };
+                log('envResult', JSON.stringify(info, null, 2));
+            } catch (error) {
+                log('envResult', `环境检查失败: ${error.message}`, true);
+            }
+        }
+
+        function checkApiObject() {
+            try {
+                const info = {
+                    'api 对象存在': typeof api !== 'undefined',
+                    'api 类型': typeof api,
+                    'api 构造函数': api ? api.constructor.name : 'N/A',
+                    'baseURL': api ? api.baseURL : 'N/A',
+                    '方法列表': api ? Object.getOwnPropertyNames(Object.getPrototypeOf(api)).filter(name => typeof api[name] === 'function') : []
+                };
+                
+                if (api) {
+                    info['分享相关方法'] = {
+                        'createShare': typeof api.createShare,
+                        'getUserShares': typeof api.getUserShares,
+                        'getFileShare': typeof api.getFileShare,
+                        'cancelShare': typeof api.cancelShare
+                    };
+                }
+                
+                log('apiResult', JSON.stringify(info, null, 2));
+            } catch (error) {
+                log('apiResult', `API 对象检查失败: ${error.message}`, true);
+            }
+        }
+
+        function checkShareManager() {
+            try {
+                const info = {
+                    'shareManager 对象存在': typeof shareManager !== 'undefined',
+                    'shareManager 类型': typeof shareManager,
+                    '方法列表': shareManager ? Object.getOwnPropertyNames(shareManager).filter(name => typeof shareManager[name] === 'function') : []
+                };
+                
+                log('shareManagerResult', JSON.stringify(info, null, 2));
+            } catch (error) {
+                log('shareManagerResult', `分享管理器检查失败: ${error.message}`, true);
+            }
+        }
+
+        async function testShareApi() {
+            try {
+                log('shareApiResult', '正在测试 API 连接...');
+                
+                // 测试基础连接
+                const healthResponse = await fetch(`${CONFIG.API_BASE_URL}/health`);
+                const healthData = await healthResponse.json();
+                
+                const result = {
+                    '健康检查': healthResponse.ok ? '✅ 成功' : '❌ 失败',
+                    '响应状态': healthResponse.status,
+                    '响应数据': healthData
+                };
+                
+                // 测试分享 API（不需要认证的部分）
+                try {
+                    const shareResponse = await fetch(`${CONFIG.API_BASE_URL}/shares/test-id/info`);
+                    result['分享API测试'] = shareResponse.status === 404 ? '✅ 端点存在' : `状态码: ${shareResponse.status}`;
+                } catch (shareError) {
+                    result['分享API测试'] = `❌ ${shareError.message}`;
+                }
+                
+                log('shareApiResult', JSON.stringify(result, null, 2));
+            } catch (error) {
+                log('shareApiResult', `API 测试失败: ${error.message}`, true);
+            }
+        }
+
+        async function simulateShare() {
+            try {
+                log('simulateResult', '模拟创建分享...');
+                
+                if (typeof api === 'undefined') {
+                    throw new Error('API 对象未定义');
+                }
+                
+                if (typeof api.createShare !== 'function') {
+                    throw new Error('api.createShare 方法不存在');
+                }
+                
+                // 模拟分享数据
+                const shareData = {
+                    shareName: '测试分享',
+                    shareDescription: '这是一个测试分享',
+                    permission: 'READ_ONLY',
+                    password: null,
+                    expiresAt: null,
+                    maxDownloads: null
+                };
+                
+                const response = await api.createShare('test-file-id', shareData);
+                log('simulateResult', `创建分享结果:\n${JSON.stringify(response, null, 2)}`);
+                
+            } catch (error) {
+                log('simulateResult', `模拟创建分享失败: ${error.message}`, true);
+            }
+        }
+
+        async function simulateGetShares() {
+            try {
+                log('simulateResult', '模拟获取分享列表...');
+                
+                if (typeof api === 'undefined') {
+                    throw new Error('API 对象未定义');
+                }
+                
+                // 尝试不同的方法
+                let response;
+                if (typeof api.getUserShares === 'function') {
+                    response = await api.getUserShares();
+                    log('simulateResult', `使用 getUserShares 方法:\n${JSON.stringify(response, null, 2)}`);
+                } else if (typeof api.get === 'function') {
+                    response = await api.get('/shares');
+                    log('simulateResult', `使用 get('/shares') 方法:\n${JSON.stringify(response, null, 2)}`);
+                } else {
+                    throw new Error('没有可用的获取分享列表方法');
+                }
+                
+            } catch (error) {
+                log('simulateResult', `模拟获取分享列表失败: ${error.message}`, true);
+            }
+        }
+
+        // 页面加载时自动检查环境
+        window.addEventListener('load', () => {
+            setTimeout(() => {
+                checkEnvironment();
+                checkApiObject();
+                checkShareManager();
+            }, 100);
+        });
+    </script>
+</body>
+</html>

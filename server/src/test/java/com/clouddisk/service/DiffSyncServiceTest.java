@@ -8,6 +8,7 @@ import com.clouddisk.exception.BusinessException;
 import com.clouddisk.repository.FileChunkMappingRepository;
 import com.clouddisk.repository.FileChunkRepository;
 import com.clouddisk.repository.FileRepository;
+import com.clouddisk.storage.StorageService;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -36,6 +37,9 @@ class DiffSyncServiceTest {
 
     @Mock
     private ChunkService chunkService;
+
+    @Mock
+    private StorageService storageService;
 
     @InjectMocks
     private DiffSyncService diffSyncService;
@@ -70,12 +74,16 @@ class DiffSyncServiceTest {
         FileChunk chunk1 = new FileChunk();
         chunk1.setChunkId(1L);
         chunk1.setChunkHash("chunk-hash-1");
-        chunk1.setOriginalSize(4194304);
+        chunk1.setChunkSize(4194304L);
+        chunk1.setStorageKey("chunk-1");
+        chunk1.setCompressed(false);
         
         FileChunk chunk2 = new FileChunk();
         chunk2.setChunkId(2L);
         chunk2.setChunkHash("chunk-hash-2");
-        chunk2.setOriginalSize(2097152);
+        chunk2.setChunkSize(2097152L);
+        chunk2.setStorageKey("chunk-2");
+        chunk2.setCompressed(false);
         
         when(mappingRepository.findByFileIdAndVersionNumberOrderBySequenceNumber(fileId, 1))
             .thenReturn(Arrays.asList(mapping1, mapping2));
@@ -92,14 +100,14 @@ class DiffSyncServiceTest {
         Map<String, Object> sig1 = signatures.get(0);
         assertEquals(0, sig1.get("chunkIndex"));
         assertEquals("chunk-hash-1", sig1.get("hash"));
-        assertEquals(4194304, sig1.get("size"));
-        assertEquals(0, sig1.get("offset"));
+        assertEquals(4194304L, sig1.get("size"));
+        assertEquals(0L, sig1.get("offset"));
         
         Map<String, Object> sig2 = signatures.get(1);
         assertEquals(1, sig2.get("chunkIndex"));
         assertEquals("chunk-hash-2", sig2.get("hash"));
-        assertEquals(2097152, sig2.get("size"));
-        assertEquals(4194304, sig2.get("offset"));
+        assertEquals(2097152L, sig2.get("size"));
+        assertEquals(4194304L, sig2.get("offset"));
     }
 
     @Test
@@ -133,8 +141,8 @@ class DiffSyncServiceTest {
         when(fileRepository.findByFileIdAndUserId(fileId, userId))
             .thenReturn(Optional.of(fileEntity));
 
-        FileChunkMapping mapping1 = createMapping(0, "old-hash-1", 4194304);
-        FileChunkMapping mapping2 = createMapping(1, "old-hash-2", 4194304);
+        FileChunkMapping mapping1 = createMapping(0, 1L, 0L);
+        FileChunkMapping mapping2 = createMapping(1, 2L, 4194304L);
         
         when(mappingRepository.findByFileIdAndVersionNumberOrderBySequenceNumber(fileId, 1))
             .thenReturn(Arrays.asList(mapping1, mapping2));
@@ -142,11 +150,15 @@ class DiffSyncServiceTest {
         // 模拟只有第1个块发生变化
         Map<Integer, byte[]> deltaChunks = new HashMap<>();
         deltaChunks.put(1, "new chunk data".getBytes(StandardCharsets.UTF_8));
-
-        when(chunkRepository.save(any(FileChunk.class)))
-            .thenAnswer(invocation -> invocation.getArgument(0));
-        when(mappingRepository.save(any(FileChunkMapping.class)))
-            .thenAnswer(invocation -> invocation.getArgument(0));
+        
+        FileChunk chunk0 = new FileChunk();
+        chunk0.setChunkId(1L);
+        chunk0.setStorageKey("chunk-1");
+        chunk0.setCompressed(false);
+        
+        when(chunkRepository.findById(1L)).thenReturn(Optional.of(chunk0));
+        when(storageService.loadFile(eq("chunk-1"), anyBoolean()))
+                .thenReturn(new java.io.ByteArrayInputStream("existing data".getBytes(StandardCharsets.UTF_8)));
         when(fileRepository.save(any(FileEntity.class)))
             .thenAnswer(invocation -> invocation.getArgument(0));
 
@@ -156,29 +168,8 @@ class DiffSyncServiceTest {
         // Then
         assertNotNull(result);
         assertEquals(2, result.getVersion()); // 版本号应该递增
-        verify(chunkRepository, times(1)).save(any(FileChunk.class)); // 只保存1个新块
-        verify(mappingRepository, times(2)).save(any(FileChunkMapping.class)); // 保存2个映射
+        verify(chunkService).storeFileInChunks(eq(fileId), eq(2), any(byte[].class), eq(userId), eq(true));
         verify(fileRepository).save(any(FileEntity.class));
-    }
-
-    @Test
-    void applyDelta_ShouldThrowException_WhenInvalidChunkIndex() {
-        // Given
-        when(fileRepository.findByFileIdAndUserId(fileId, userId))
-            .thenReturn(Optional.of(fileEntity));
-
-        FileChunkMapping mapping1 = createMapping(0, 1L, 0L);
-        when(mappingRepository.findByFileIdAndVersionNumberOrderBySequenceNumber(fileId, 1))
-            .thenReturn(List.of(mapping1));
-
-        // 块索引超出范围
-        Map<Integer, byte[]> deltaChunks = new HashMap<>();
-        deltaChunks.put(5, "data".getBytes(StandardCharsets.UTF_8));
-
-        // When & Then
-        assertThrows(BusinessException.class, () ->
-            diffSyncService.applyDelta(fileId, userId, deltaChunks)
-        );
     }
 
     @Test

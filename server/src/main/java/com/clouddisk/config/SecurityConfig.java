@@ -68,8 +68,9 @@ public class SecurityConfig {
                         .requestMatchers("/auth/**", "/health", "/actuator/**", "/v3/api-docs/**", "/swagger-ui/**", "/swagger-ui.html")
                         .permitAll()
                         .requestMatchers(HttpMethod.GET, "/files/check").permitAll()
+                        .requestMatchers("/shares/*/info", "/shares/*/validate", "/shares/*/download").permitAll()
                         .requestMatchers(HttpMethod.POST, "/files/directories").authenticated()
-                        .requestMatchers("/files/**").authenticated()
+                        .requestMatchers("/**").authenticated()
                         .anyRequest().authenticated())
                 .logout(logout -> logout.logoutUrl("/auth/logout").logoutSuccessHandler((request, response, authentication) -> response.setStatus(200)))
                 .headers(headers -> headers.frameOptions(frame -> frame.disable()));

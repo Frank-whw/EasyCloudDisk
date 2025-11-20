@@ -23,16 +23,48 @@ if [ -z "$AUTH_TOKEN" ]; then
     }
 fi
 
-# 检查是否有已上传的文件ID（需要先有一个文件才能进行差分同步）
-if [ -z "$UPLOADED_FILE_ID" ]; then
-    echo -e "${YELLOW}⚠ 未找到已上传的文件ID，先上传一个测试文件...${NC}"
-    source "$(dirname "$0")/test_file_upload.sh" || {
-        echo -e "${RED}✗ 无法上传测试文件${NC}"
+# 创建一个足够大的测试文件（需要分块存储才能进行差分同步）
+TIMESTAMP=$(date +%s)
+RANDOM_NUM=$((RANDOM % 10000))
+TEST_FILE_NAME="delta_test_${TIMESTAMP}_${RANDOM_NUM}.dat"
+TEMP_FILE=$(mktemp)
+
+# 创建约5MB的测试文件（超过4MB块大小阈值）
+echo "创建测试文件用于差分同步测试（约5MB）..."
+dd if=/dev/zero of="$TEMP_FILE" bs=1024 count=5120 2>/dev/null || {
+    # 如果 dd 失败，使用 Python
+    python3 -c "with open('$TEMP_FILE', 'wb') as f: f.write(b'0' * 5242880)" 2>/dev/null || {
+        echo -e "${RED}✗ 无法创建测试文件${NC}"
         exit 1
     }
+}
+
+echo "上传测试文件..."
+UPLOAD_RESPONSE=$(curl -s -w "\nHTTP_CODE:%{http_code}" \
+    -X POST "$API_BASE_URL/files/upload" \
+    -H "Authorization: Bearer $AUTH_TOKEN" \
+    -F "file=@$TEMP_FILE" \
+    -F "path=/$TEST_FILE_NAME" || echo "HTTP_CODE:000")
+
+UPLOAD_HTTP_CODE=$(echo "$UPLOAD_RESPONSE" | grep -oE 'HTTP_CODE:[0-9]+$' | cut -d: -f2 || echo "000")
+UPLOAD_HTTP_BODY=$(echo "$UPLOAD_RESPONSE" | sed -E 's/HTTP_CODE:[0-9]+$//')
+
+rm -f "$TEMP_FILE"
+
+if [ "$UPLOAD_HTTP_CODE" != "200" ]; then
+    echo -e "${RED}✗ 上传测试文件失败 (HTTP $UPLOAD_HTTP_CODE)${NC}"
+    exit 1
 fi
 
-FILE_ID="$UPLOADED_FILE_ID"
+FILE_ID=$(echo "$UPLOAD_HTTP_BODY" | grep -oE '"fileId":\s*"[^"]*' | cut -d'"' -f4 || echo "")
+if [ -z "$FILE_ID" ]; then
+    echo -e "${RED}✗ 未找到文件ID${NC}"
+    exit 1
+fi
+
+echo "测试文件上传成功"
+echo "File ID: $FILE_ID"
+echo ""
 
 echo "=========================================="
 echo "开始测试: $TEST_NAME"
@@ -147,4 +179,3 @@ else
     echo "HTTP 状态码: $HTTP_CODE (期望: 200)"
     exit 1
 fi
-

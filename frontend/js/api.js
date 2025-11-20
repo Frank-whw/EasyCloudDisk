@@ -229,6 +229,44 @@ class ApiClient {
     async healthCheck() {
         return this.get('/health');
     }
+
+    // ==================== 文件分享相关 ====================
+    
+    // 创建文件分享
+    async createShare(fileId, shareData) {
+        return this.post(`/files/${fileId}/share`, shareData);
+    }
+
+    // 获取用户的所有分享
+    async getUserShares() {
+        return this.get('/shares');
+    }
+
+    // 获取文件的分享信息
+    async getFileShare(fileId) {
+        return this.get(`/files/${fileId}/share`);
+    }
+
+    // 取消文件分享
+    async cancelShare(shareId) {
+        return this.delete(`/shares/${shareId}`);
+    }
+
+    // 获取分享信息（公开访问）
+    async getShareInfo(shareId) {
+        return this.get(`/shares/${shareId}/info`);
+    }
+
+    // 验证分享密码（公开访问）
+    async validateSharePassword(shareId, password) {
+        return this.post(`/shares/${shareId}/validate`, { password });
+    }
+
+    // 下载分享文件（公开访问）
+    async downloadSharedFile(shareId, password = null) {
+        const url = `/shares/${shareId}/download` + (password ? `?password=${encodeURIComponent(password)}` : '');
+        return this.request(url, { responseType: 'blob' });
+    }
 }
 
 // 创建全局API客户端实例

@@ -44,6 +44,10 @@ public class FileEntity {
     @Column(name = "version", nullable = false)
     private int version;
 
+    @Version
+    @Column(name = "optimistic_lock_version", nullable = false)
+    private Long optimisticLockVersion = 0L;
+
     @Column(name = "created_at", nullable = false, updatable = false)
     private Instant createdAt;
 

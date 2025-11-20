@@ -162,6 +162,17 @@ const syncManager = {
     // 检查同步状态
     isConnected() {
         return this.isRunning && this.reconnectAttempts < this.maxReconnectAttempts;
+    },
+
+    // 获取连接状态信息（用于调试）
+    getConnectionStatus() {
+        return {
+            isRunning: this.isRunning,
+            reconnectAttempts: this.reconnectAttempts,
+            maxReconnectAttempts: this.maxReconnectAttempts,
+            hasReader: !!this.reader,
+            status: this.isConnected() ? '已连接' : '未连接'
+        };
     }
 };
 

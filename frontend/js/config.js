@@ -3,11 +3,11 @@ const CONFIG = {
     // API基础URL - 根据实际情况修改
 
     // 本地开发环境（调试时使用）
-    // API_BASE_URL: 'http://localhost:8080',
+    API_BASE_URL: 'http://localhost:8080/api',
 
     // 生产环境（EC2）
-    // API_BASE_URL: 'http://ec2-54-95-61-230.ap-northeast-1.compute.amazonaws.com:8080',
-    API_BASE_URL: 'http://54.95.61.230:8080',
+    // API_BASE_URL: 'http://ec2-54-95-61-230.ap-northeast-1.compute.amazonaws.com:8080/api',
+    // API_BASE_URL: 'http://54.95.61.230:8080/api',
 
 
     // 上传配置

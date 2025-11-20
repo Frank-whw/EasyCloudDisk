@@ -40,50 +40,53 @@ echo "=========================================="
 echo "文件 ID: $FILE_ID"
 echo ""
 
-# 创建临时下载文件
-DOWNLOADED_FILE=$(mktemp)
-
 # 执行下载请求
 echo "发送请求: GET $API_BASE_URL/files/$FILE_ID/download"
-HTTP_CODE=$(curl -s -w "%{http_code}" \
-    -o "$DOWNLOADED_FILE" \
+DOWNLOAD_FILE=$(mktemp)
+RESPONSE=$(curl -s -w "\nHTTP_CODE:%{http_code}" \
     -X GET "$API_BASE_URL/files/$FILE_ID/download" \
-    -H "Authorization: Bearer $AUTH_TOKEN" || echo "000")
+    -H "Authorization: Bearer $AUTH_TOKEN" \
+    -o "$DOWNLOAD_FILE" || echo "HTTP_CODE:000")
+
+# 分离响应体和HTTP状态码
+HTTP_CODE=$(echo "$RESPONSE" | grep -oE 'HTTP_CODE:[0-9]+$' | cut -d: -f2 || echo "000")
 
 echo "HTTP 状态码: $HTTP_CODE"
-echo "下载的文件大小: $(wc -c < "$DOWNLOADED_FILE" 2>/dev/null || echo 0) 字节"
 echo ""
 
 # 验证结果
 if [ "$HTTP_CODE" = "200" ]; then
-    # 检查下载的文件是否非空
-    FILE_SIZE=$(wc -c < "$DOWNLOADED_FILE" 2>/dev/null || echo 0)
-    if [ "$FILE_SIZE" -gt "0" ]; then
+    # 检查下载的文件是否存在且不为空
+    if [ -f "$DOWNLOAD_FILE" ] && [ -s "$DOWNLOAD_FILE" ]; then
+        FILE_SIZE=$(wc -c < "$DOWNLOAD_FILE")
         echo -e "${GREEN}✓ 测试通过: $TEST_NAME${NC}"
         echo "文件下载成功"
-        echo "文件大小: $FILE_SIZE 字节"
-        echo "文件内容预览:"
-        head -c 100 "$DOWNLOADED_FILE" 2>/dev/null | cat -A || echo "(无法显示)"
-        echo ""
-        rm -f "$DOWNLOADED_FILE"
+        echo "下载文件大小: $FILE_SIZE 字节"
+        
+        # 显示文件内容的前几行（如果是文本文件）
+        if file "$DOWNLOAD_FILE" | grep -q "text"; then
+            echo "文件内容预览:"
+            head -n 5 "$DOWNLOAD_FILE" | sed 's/^/  /'
+        fi
+        
+        rm -f "$DOWNLOAD_FILE"
         exit 0
     else
-        echo -e "${YELLOW}⚠ 警告: HTTP 200 但下载的文件为空${NC}"
-        rm -f "$DOWNLOADED_FILE"
+        echo -e "${YELLOW}⚠ 警告: HTTP 200 但下载的文件为空或不存在${NC}"
+        rm -f "$DOWNLOAD_FILE"
         exit 1
     fi
+elif [ "$HTTP_CODE" = "404" ]; then
+    echo -e "${YELLOW}⚠ 文件不存在（可能已被删除）${NC}"
+    rm -f "$DOWNLOAD_FILE"
+    exit 0
 elif [ "$HTTP_CODE" = "401" ]; then
     echo -e "${RED}✗ 测试失败: 认证失败，请检查 token${NC}"
-    rm -f "$DOWNLOADED_FILE"
+    rm -f "$DOWNLOAD_FILE"
     exit 1
-elif [ "$HTTP_CODE" = "404" ]; then
-    echo -e "${YELLOW}⚠ 文件不存在（可能是已删除）${NC}"
-    rm -f "$DOWNLOADED_FILE"
-    exit 0
 else
     echo -e "${RED}✗ 测试失败: $TEST_NAME${NC}"
     echo "HTTP 状态码: $HTTP_CODE (期望: 200)"
-    rm -f "$DOWNLOADED_FILE"
+    rm -f "$DOWNLOAD_FILE"
     exit 1
 fi
-

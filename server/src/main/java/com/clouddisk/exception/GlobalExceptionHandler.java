@@ -30,6 +30,20 @@ public class GlobalExceptionHandler {
         return ResponseEntity.badRequest()
                 .body(ApiResponse.error(ex.getMessage(), ex.getErrorCode().name()));
     }
+    
+    /**
+     * 处理冲突异常。
+     */
+    @ExceptionHandler(ConflictException.class)
+    public ResponseEntity<ApiResponse<Object>> handleConflictException(ConflictException ex) {
+        log.warn("Conflict exception: {}", ex.getMessage());
+        Map<String, Object> details = Map.of(
+            "conflictType", ex.getConflictType(),
+            "conflictDetails", ex.getConflictDetails()
+        );
+        return ResponseEntity.status(HttpStatus.CONFLICT)
+                .body(ApiResponse.error(ex.getMessage(), ex.getErrorCode().name(), details));
+    }
 
     /**
      * 处理 Spring MVC 校验异常。
@@ -39,6 +53,7 @@ public class GlobalExceptionHandler {
         Map<String, Object> details = new HashMap<>();
         ex.getBindingResult().getFieldErrors().forEach(error ->
                 details.put(error.getField(), error.getDefaultMessage()));
+        log.warn("Validation error: {}", details);
         return ResponseEntity.badRequest()
                 .body(ApiResponse.error(ErrorCode.VALIDATION_ERROR.getMessage(), ErrorCode.VALIDATION_ERROR.name(), details));
     }

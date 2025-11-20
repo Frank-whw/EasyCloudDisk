@@ -802,3 +802,419 @@ body {
     }
 }
 
+/* ==================== 分享相关样式 ==================== */
+.share-modal {
+    max-width: 500px;
+    width: 90%;
+}
+
+.share-file-info {
+    display: flex;
+    align-items: center;
+    padding: 15px;
+    background: var(--bg-color);
+    border-radius: var(--radius);
+    margin-bottom: 20px;
+}
+
+.share-file-info i {
+    font-size: 24px;
+    color: var(--primary-color);
+    margin-right: 12px;
+}
+
+.share-file-info .file-name {
+    font-weight: 600;
+    color: var(--text-primary);
+}
+
+.share-success-modal {
+    max-width: 600px;
+    width: 90%;
+}
+
+.share-url-group,
+.share-password-group,
+.share-expires-group,
+.share-downloads-group {
+    margin-bottom: 20px;
+}
+
+.share-url-group label,
+.share-password-group label,
+.share-expires-group label,
+.share-downloads-group label {
+    display: block;
+    font-weight: 600;
+    margin-bottom: 8px;
+    color: var(--text-primary);
+}
+
+.input-group {
+    display: flex;
+    gap: 8px;
+}
+
+.input-group input {
+    flex: 1;
+    padding: 10px 12px;
+    border: 1px solid var(--border-color);
+    border-radius: var(--radius);
+    font-size: 14px;
+}
+
+.input-group button {
+    white-space: nowrap;
+}
+
+.shares-list-modal {
+    max-width: 800px;
+    width: 95%;
+    max-height: 80vh;
+}
+
+.shares-list-modal .modal-body {
+    max-height: 60vh;
+    overflow-y: auto;
+}
+
+.shares-list {
+    display: flex;
+    flex-direction: column;
+    gap: 16px;
+}
+
+.share-item {
+    border: 1px solid var(--border-color);
+    border-radius: var(--radius);
+    padding: 20px;
+    background: var(--surface-color);
+    transition: all 0.2s ease;
+}
+
+.share-item:hover {
+    box-shadow: var(--shadow-md);
+}
+
+.share-item.inactive {
+    opacity: 0.6;
+    background: #f8f9fa;
+}
+
+.share-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-start;
+    margin-bottom: 12px;
+}
+
+.share-name {
+    margin: 0;
+    font-size: 16px;
+    font-weight: 600;
+    color: var(--text-primary);
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+
+.share-status {
+    display: flex;
+    gap: 6px;
+}
+
+.badge {
+    padding: 4px 8px;
+    border-radius: 12px;
+    font-size: 12px;
+    font-weight: 500;
+    text-transform: uppercase;
+}
+
+.badge-success {
+    background: #d1fae5;
+    color: #065f46;
+}
+
+.badge-warning {
+    background: #fef3c7;
+    color: #92400e;
+}
+
+.badge-danger {
+    background: #fee2e2;
+    color: #991b1b;
+}
+
+.share-description {
+    margin: 0 0 8px 0;
+    color: var(--text-secondary);
+    font-size: 14px;
+}
+
+.share-meta {
+    display: flex;
+    gap: 16px;
+    font-size: 13px;
+    color: var(--text-secondary);
+    margin-bottom: 12px;
+}
+
+.share-meta span {
+    display: flex;
+    align-items: center;
+    gap: 4px;
+}
+
+.share-url {
+    margin-bottom: 12px;
+}
+
+.share-url .input-group input {
+    font-family: monospace;
+    font-size: 12px;
+    background: var(--bg-color);
+}
+
+.share-actions {
+    display: flex;
+    justify-content: flex-end;
+    gap: 8px;
+}
+
+.text-success {
+    color: var(--success-color) !important;
+}
+
+.text-muted {
+    color: var(--text-secondary) !important;
+    font-size: 13px;
+}
+
+/* 分享按钮样式 */
+.btn-secondary {
+    background: #6c757d;
+    color: white;
+    border: 1px solid #6c757d;
+}
+
+.btn-secondary:hover {
+    background: #5a6268;
+    border-color: #545b62;
+}
+
+.btn-sm {
+    padding: 6px 12px;
+    font-size: 13px;
+}
+
+/* 空状态样式 */
+.empty-state {
+    text-align: center;
+    padding: 40px 20px;
+    color: var(--text-secondary);
+}
+
+.empty-state i {
+    font-size: 48px;
+    margin-bottom: 16px;
+    opacity: 0.5;
+}
+
+.empty-state p {
+    margin: 0;
+    font-size: 16px;
+}
+
+/* ==================== 帮助和指南样式 ==================== */
+.help-modal {
+    max-width: 600px;
+    width: 90%;
+}
+
+.help-content {
+    margin-bottom: 20px;
+}
+
+.help-step {
+    display: flex;
+    margin-bottom: 20px;
+    align-items: flex-start;
+}
+
+.step-number {
+    background: var(--primary-color);
+    color: white;
+    width: 24px;
+    height: 24px;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-weight: bold;
+    font-size: 12px;
+    margin-right: 15px;
+    flex-shrink: 0;
+    margin-top: 2px;
+}
+
+.step-content h4 {
+    margin: 0 0 8px 0;
+    color: var(--text-primary);
+    font-size: 16px;
+}
+
+.step-content p {
+    margin: 0 0 10px 0;
+    color: var(--text-secondary);
+    line-height: 1.5;
+}
+
+.step-content ul {
+    margin: 10px 0;
+    padding-left: 20px;
+}
+
+.step-content li {
+    margin: 5px 0;
+    color: var(--text-secondary);
+}
+
+.button-example {
+    display: flex;
+    gap: 8px;
+    margin: 10px 0;
+    align-items: center;
+}
+
+.btn-demo {
+    padding: 6px 12px;
+    border-radius: 4px;
+    font-size: 12px;
+    font-weight: 500;
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+}
+
+.btn-demo.primary {
+    background: var(--primary-color);
+    color: white;
+}
+
+.btn-demo.secondary {
+    background: #6c757d;
+    color: white;
+}
+
+.btn-demo.danger {
+    background: var(--danger-color);
+    color: white;
+}
+
+.btn-demo.highlight {
+    box-shadow: 0 0 0 2px var(--warning-color);
+    animation: pulse 2s infinite;
+}
+
+@keyframes pulse {
+    0% { box-shadow: 0 0 0 2px var(--warning-color); }
+    50% { box-shadow: 0 0 0 6px rgba(245, 158, 11, 0.3); }
+    100% { box-shadow: 0 0 0 2px var(--warning-color); }
+}
+
+.help-tips {
+    background: var(--bg-color);
+    padding: 15px;
+    border-radius: var(--radius);
+    margin: 20px 0;
+}
+
+.help-tips h4 {
+    margin: 0 0 10px 0;
+    color: var(--primary-color);
+    font-size: 14px;
+    display: flex;
+    align-items: center;
+    gap: 6px;
+}
+
+.help-tips ul {
+    margin: 0;
+    padding-left: 20px;
+}
+
+.help-tips li {
+    margin: 5px 0;
+    color: var(--text-secondary);
+    font-size: 13px;
+}
+
+.help-actions {
+    display: flex;
+    justify-content: flex-end;
+    gap: 10px;
+    margin-top: 20px;
+}
+
+/* 欢迎模态框样式 */
+.welcome-modal {
+    max-width: 500px;
+    width: 90%;
+}
+
+.welcome-content {
+    text-align: center;
+    padding: 20px 0;
+}
+
+.welcome-icon {
+    font-size: 48px;
+    color: var(--primary-color);
+    margin-bottom: 20px;
+}
+
+.welcome-content h4 {
+    margin: 0 0 15px 0;
+    color: var(--text-primary);
+    font-size: 20px;
+}
+
+.welcome-content p {
+    margin: 0 0 20px 0;
+    color: var(--text-secondary);
+    line-height: 1.6;
+}
+
+.feature-highlights {
+    display: flex;
+    justify-content: center;
+    gap: 30px;
+    margin: 25px 0;
+}
+
+.feature {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 8px;
+}
+
+.feature i {
+    font-size: 24px;
+    color: var(--primary-color);
+}
+
+.feature span {
+    font-size: 12px;
+    color: var(--text-secondary);
+    font-weight: 500;
+}
+
+.welcome-actions {
+    display: flex;
+    justify-content: center;
+    gap: 15px;
+    margin-top: 25px;
+}
+

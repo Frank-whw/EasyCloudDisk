@@ -5,7 +5,7 @@
 
 # ==================== 服务器连接配置 ====================
 # AWS EC2 服务器地址
-export REMOTE_HOST="ec2-54-95-61-230.ap-northeast-1.compute.amazonaws.com"
+export REMOTE_HOST="54.95.61.230"
 
 # SSH 用户名（AWS EC2 Ubuntu 默认用户）
 export REMOTE_USER="ubuntu"
@@ -14,7 +14,7 @@ export REMOTE_USER="ubuntu"
 export REMOTE_PORT="22"
 
 # SSH 私钥文件路径
-export SSH_KEY_FILE="/home/frank/learning/cloud.pem"
+export SSH_KEY_FILE="$HOME/.ssh/cloud2.pem"
 
 # ==================== 服务器路径配置 ====================
 # 应用部署目录
@@ -25,7 +25,7 @@ export REMOTE_BACKUP_DIR="/home/ubuntu/clouddisk/backup"
 
 # ==================== 应用配置 ====================
 # JAR 文件名（不包含 .jar 扩展名）
-export JAR_NAME="clouddisk-server"
+export JAR_NAME="clouddisk-server-1.0.0"
 
 # Maven 构建配置文件（如果没有特定的 profile，使用 default）
 export BUILD_PROFILE="default"
@@ -67,7 +67,7 @@ export JVM_XMX="1024m"
 #
 # 2. 创建应用目录：
 #    sudo mkdir -p $REMOTE_APP_DIR $REMOTE_BACKUP_DIR
-#    sudo chown -R ubuntu:ubuntu /home/ubuntu/clouddisk
+#    sudo chown -R root:root /root/clouddisk
 #
 # 3. 安装 Java（如果未安装）：
 #    # Ubuntu/Debian:

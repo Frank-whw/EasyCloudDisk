@@ -29,7 +29,7 @@ echo "=========================================="
 echo "开始测试: $TEST_NAME"
 echo "=========================================="
 
-# 生成唯一的测试文件（模拟一个大文件，需要多个块）
+# 生成唯一的测试文件（模拟一个大文件，需要多块）
 TIMESTAMP=$(date +%s)
 RANDOM_NUM=$((RANDOM % 10000))
 TEST_FILE_NAME="resumable_${TIMESTAMP}_${RANDOM_NUM}.dat"
@@ -46,7 +46,7 @@ dd if=/dev/urandom of="$TEMP_FILE" bs=1M count=5 2>/dev/null || {
 }
 
 FILE_SIZE=$(wc -c < "$TEMP_FILE")
-echo "文件名: $TEST_FILE_NAME"
+echo "文件名称: $TEST_FILE_NAME"
 echo "文件大小: $FILE_SIZE 字节"
 echo "预计块数: $(( (FILE_SIZE + CHUNK_SIZE - 1) / CHUNK_SIZE ))"
 echo ""
@@ -117,6 +117,7 @@ while [ $OFFSET -lt $FILE_SIZE ]; do
             tail -c +$((OFFSET + 1)) "$TEMP_FILE" | head -c $CHUNK_LEN > "$CHUNK_FILE" 2>/dev/null || {
                 # 如果 tail/head 也失败，使用 Python
                 python3 -c "
+import sys
 with open('$TEMP_FILE', 'rb') as f:
     f.seek($OFFSET)
     data = f.read($CHUNK_LEN)
@@ -132,6 +133,7 @@ with open('$CHUNK_FILE', 'wb') as f:
     else
         # 使用 Python 作为备选
         python3 -c "
+import sys
 with open('$TEMP_FILE', 'rb') as f:
     f.seek($OFFSET)
     data = f.read($CHUNK_LEN)
@@ -158,7 +160,7 @@ with open('$CHUNK_FILE', 'wb') as f:
     
     if [ "$HTTP_CODE" = "200" ]; then
         UPLOADED_CHUNKS=$(echo "$HTTP_BODY" | grep -oE '"uploadedChunks":\s*[0-9]+' | grep -oE '[0-9]+' || echo "$((CHUNK_INDEX + 1))")
-        echo "  块 $CHUNK_INDEX 上传成功 (已上传: $UPLOADED_CHUNKS/$TOTAL_CHUNKS)"
+        echo "  块 $CHUNK_INDEX 上传成功 (已上传 $UPLOADED_CHUNKS/$TOTAL_CHUNKS)"
         ((CHUNK_INDEX++))
         OFFSET=$CHUNK_END
     else
@@ -214,4 +216,3 @@ else
     echo "HTTP 状态码: $HTTP_CODE (期望: 200)"
     exit 1
 fi
-

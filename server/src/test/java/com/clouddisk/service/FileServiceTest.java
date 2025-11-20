@@ -194,17 +194,19 @@ class FileServiceTest {
         file1.setName("file1.txt");
         file1.setDirectory(false);
         file1.setFileSize(1024L); // 设置文件大小避免NPE
+        file1.setDirectoryPath("/");
 
         FileEntity dir1 = new FileEntity();
         dir1.setFileId(UUID.randomUUID().toString());
         dir1.setName("dir1");
         dir1.setDirectory(true);
         dir1.setFileSize(0L); // 目录大小设为0
+        dir1.setDirectoryPath("/");
 
         when(fileRepository.findAllByUserId(userId)).thenReturn(List.of(file1, dir1));
 
         // When
-        List<FileMetadataDto> result = fileService.listFiles(userId);
+        List<FileMetadataDto> result = fileService.listFiles(userId, "/");
 
         // Then
         assertNotNull(result);

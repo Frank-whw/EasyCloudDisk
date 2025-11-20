@@ -236,9 +236,11 @@ public class FileApiClient {
      * 通知服务端上传完成（用于S3直接上传后的通知）
      * @param contentHash 文件内容哈希
      * @param filePath 文件路径
+     * @param fileName 文件名
+     * @param fileSize 文件大小
      * @return 通知是否成功
      */
-    public boolean notifyUploadComplete(String contentHash, String filePath) {
+    public boolean notifyUploadComplete(String contentHash, String filePath, String fileName, long fileSize) {
         return RetryTemplate.executeWithRetry(() -> {
             try {
                 HttpPost httpPost = new HttpPost(baseUrl + "/files/notify-upload");
@@ -253,7 +255,9 @@ public class FileApiClient {
                 mapper.findAndRegisterModules();
                 String jsonBody = mapper.writeValueAsString(Map.of(
                         "contentHash", contentHash,
-                        "filePath", filePath
+                        "filePath", filePath,
+                        "fileName", fileName,
+                        "fileSize", fileSize
                 ));
                 httpPost.setEntity(new ByteArrayEntity(jsonBody.getBytes(StandardCharsets.UTF_8), ContentType.APPLICATION_JSON));
                 

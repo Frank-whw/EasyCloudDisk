@@ -2,10 +2,13 @@ package com.clouddisk.service;
 
 import com.clouddisk.dto.FileMetadataDto;
 import com.clouddisk.entity.FileEntity;
+import com.clouddisk.entity.FileShare;
 import com.clouddisk.entity.FileVersion;
 import com.clouddisk.exception.BusinessException;
+import com.clouddisk.exception.ConflictException;
 import com.clouddisk.exception.ErrorCode;
 import com.clouddisk.repository.FileRepository;
+import com.clouddisk.repository.FileShareRepository;
 import com.clouddisk.repository.FileVersionRepository;
 import com.clouddisk.repository.UserRepository;
 import com.clouddisk.storage.StorageService;
@@ -16,6 +19,7 @@ import org.springframework.http.ContentDisposition;
 import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 import org.springframework.stereotype.Service;
+import org.springframework.dao.OptimisticLockingFailureException;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.util.StringUtils;
 import org.springframework.web.multipart.MultipartFile;
@@ -38,17 +42,20 @@ public class FileService {
     private final UserRepository userRepository;
     private final StorageService storageService;
     private final ChunkService chunkService;
+    private final FileShareRepository fileShareRepository;
 
     public FileService(FileRepository fileRepository,
                        FileVersionRepository fileVersionRepository,
                        UserRepository userRepository,
                        StorageService storageService,
-                       ChunkService chunkService) {
+                       ChunkService chunkService,
+                       FileShareRepository fileShareRepository) {
         this.fileRepository = fileRepository;
         this.fileVersionRepository = fileVersionRepository;
         this.userRepository = userRepository;
         this.storageService = storageService;
         this.chunkService = chunkService;
+        this.fileShareRepository = fileShareRepository;
     }
 
     /**
@@ -127,7 +134,16 @@ public class FileService {
         entity.setStorageKey("chunked"); // 标记为分块存储
         entity.setFileSize((long) bytes.length);
         entity.setContentHash(hash);
-        fileRepository.save(entity);
+        
+        try {
+            fileRepository.save(entity);
+        } catch (OptimisticLockingFailureException e) {
+            throw new ConflictException(
+                "文件正在被其他用户修改，请刷新后重试",
+                "CONCURRENT_MODIFICATION",
+                "乐观锁冲突"
+            );
+        }
 
         // 使用块级存储(自动去重+压缩)
         chunkService.storeFileInChunks(
@@ -242,12 +258,24 @@ public class FileService {
         FileMetadataDto dto = new FileMetadataDto();
         dto.setFileId(entity.getFileId());
         dto.setName(entity.getName());
-        dto.setPath(entity.getDirectoryPath());
-        dto.setSize(entity.getFileSize());
+        dto.setPath(entity.getDirectoryPath() + "/" + entity.getName());
+        dto.setSize(entity.getFileSize() != null ? entity.getFileSize() : 0);
         dto.setDirectory(entity.isDirectory());
         dto.setHash(entity.getContentHash());
         dto.setVersion(entity.getVersion());
         dto.setUpdatedAt(entity.getUpdatedAt());
+
+        // 检查是否有共享
+        fileShareRepository.findByFileIdAndOwnerIdAndActiveTrue(entity.getFileId(), entity.getUserId())
+                .ifPresentOrElse(share -> {
+                    dto.setShared(true);
+                    dto.setShareId(share.getShareId());
+                    dto.setPermission(share.getPermission());
+                    dto.setShareUrl("/api/shares/" + share.getShareId());
+                    dto.setHasSharePassword(share.getPassword() != null);
+                    dto.setShareExpiresAt(share.getExpiresAt());
+                }, () -> dto.setShared(false));
+
         return dto;
     }
 
@@ -279,4 +307,5 @@ public class FileService {
         }
         return result.isEmpty() ? "/" : result;
     }
+
 }

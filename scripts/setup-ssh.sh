@@ -5,9 +5,10 @@
 
 set -e
 
-# 加载配置
-PROJECT_ROOT="/home/frank/learning/EasyCloudDisk"
-CONFIG_FILE="$PROJECT_ROOT/scripts/config.sh"
+# 加载配置（自动检测路径）
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+PROJECT_ROOT="$(cd "$SCRIPT_DIR/.." && pwd)"
+CONFIG_FILE="$SCRIPT_DIR/config.sh"
 
 if [ -f "$CONFIG_FILE" ]; then
     source "$CONFIG_FILE"
@@ -30,7 +31,7 @@ check_ssh_key() {
             # 检查私钥权限
             CURRENT_PERM=$(stat -c "%a" "$SSH_KEY_FILE")
             if [ "$CURRENT_PERM" != "600" ]; then
-                log "修正 SSH 私钥权限..."
+                log "修复 SSH 私钥权限..."
                 chmod 600 "$SSH_KEY_FILE"
                 log "SSH 私钥权限已设置为 600"
             fi
@@ -50,7 +51,7 @@ check_ssh_key() {
     fi
     
     # 默认行为：检查或生成标准 SSH 密钥
-    DEFAULT_SSH_KEY="$HOME/.ssh/id_rsa"
+    DEFAULT_SSH_KEY="$HOME/.ssh/aws_keys"
     
     if [ ! -f "$DEFAULT_SSH_KEY" ]; then
         log "SSH 密钥不存在，正在生成..."
@@ -115,10 +116,10 @@ test_ssh_connection() {
     fi
     
     if ssh $SSH_OPTS "$REMOTE_USER@$REMOTE_HOST" "echo 'SSH 免密登录测试成功'"; then
-        log "✅ SSH 免密登录配置成功！"
+        log "✓ SSH 免密登录配置成功！"
         return 0
     else
-        log "❌ SSH 免密登录测试失败"
+        log "✗ SSH 免密登录测试失败"
         return 1
     fi
 }
@@ -135,7 +136,7 @@ setup_server_environment() {
     # 创建应用目录
     ssh $SSH_OPTS "$REMOTE_USER@$REMOTE_HOST" "
         mkdir -p $REMOTE_APP_DIR $REMOTE_BACKUP_DIR
-        echo '应用目录已创建:'
+        echo '应用目录已创建'
         echo '  - $REMOTE_APP_DIR'
         echo '  - $REMOTE_BACKUP_DIR'
     "
@@ -144,7 +145,7 @@ setup_server_environment() {
     log "检查服务器 Java 环境..."
     ssh $SSH_OPTS "$REMOTE_USER@$REMOTE_HOST" "
         if command -v java &> /dev/null; then
-            echo 'Java 已安装:'
+            echo 'Java 已安装'
             java -version
         else
             echo '警告: Java 未安装，请手动安装 Java 17 或更高版本'
@@ -161,7 +162,7 @@ show_summary() {
     log "服务器: $REMOTE_USER@$REMOTE_HOST:$REMOTE_PORT"
     log "部署目录: $REMOTE_APP_DIR"
     log "备份目录: $REMOTE_BACKUP_DIR"
-    log "SSH 密钥: $HOME/.ssh/id_rsa"
+    log "SSH 密钥: ${SSH_KEY_FILE:-$HOME/.ssh/id_rsa}"
     log "=================================================="
 }
 
@@ -182,11 +183,11 @@ main() {
         # 显示摘要
         show_summary
         
-        log "✅ SSH 免密登录设置完成！"
+        log "✓ SSH 免密登录设置完成！"
         log "现在可以运行自动部署脚本了："
         log "  ./scripts/auto-deploy.sh"
     else
-        log "❌ SSH 免密登录设置失败，请检查配置"
+        log "✗ SSH 免密登录设置失败，请检查配置"
         exit 1
     fi
 }

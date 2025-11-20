@@ -29,6 +29,11 @@ async function init() {
 
     // 隐藏加载屏幕
     hideLoading();
+    
+    // 如果用户已登录，显示首次使用帮助
+    if (auth.isAuthenticated() && helpManager) {
+        helpManager.showFirstTimeHelp();
+    }
 }
 
 // 全局错误处理
