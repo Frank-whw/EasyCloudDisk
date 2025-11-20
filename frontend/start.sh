@@ -1,4 +1,4 @@
-#!/bin/bash
+#!/usr/bin/env bash
 
 echo "Starting EasyCloudDisk Frontend Server..."
 echo ""
@@ -8,10 +8,9 @@ echo ""
 
 cd "$(dirname "$0")"
 
-# 检查Python版本
-if command -v python3 &> /dev/null; then
+if command -v python3 >/dev/null 2>&1; then
     python3 -m http.server 3000
-elif command -v python &> /dev/null; then
+elif command -v python >/dev/null 2>&1; then
     python -m http.server 3000
 else
     echo "Error: Python is not installed"

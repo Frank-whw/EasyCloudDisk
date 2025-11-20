@@ -293,13 +293,14 @@ const fileManager = {
     setViewMode(mode) {
         this.viewMode = mode;
         localStorage.setItem('viewMode', mode);
-        
-        // 更新按钮状态
-        document.querySelectorAll('.view-toggle .btn-icon').forEach(btn => {
-            btn.classList.remove('active');
-        });
-        event.target.closest('.btn-icon').classList.add('active');
-        
+
+        const buttons = document.querySelectorAll('.view-toggle .btn-icon');
+        buttons.forEach(btn => btn.classList.remove('active'));
+        const activeIndex = mode === CONFIG.VIEW_MODES.GRID ? 0 : 1;
+        if (buttons[activeIndex]) {
+            buttons[activeIndex].classList.add('active');
+        }
+
         this.renderFiles();
     },
 

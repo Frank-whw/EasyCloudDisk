@@ -44,7 +44,14 @@ class ApiClient {
                 return response;
             }
 
-            const data = await response.json();
+            let data;
+            const contentType = response.headers.get('content-type') || '';
+            if (contentType.includes('application/json')) {
+                data = await response.json();
+            } else {
+                data = await response.text();
+                data = { message: data };
+            }
 
             if (!response.ok) {
                 throw new Error(data.message || `请求失败: ${response.status}`);
