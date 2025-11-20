@@ -132,11 +132,18 @@ public class FileController {
             @AuthenticationPrincipal UserPrincipal user,
             @RequestParam("contentHash") String contentHash) {
         ensureUser(user);
-        boolean exists = advancedUploadService.checkQuickUpload(contentHash, user.getUserId());
-        if (exists) {
-            return ResponseEntity.ok().build();
+        if (contentHash == null || !contentHash.matches("[0-9a-fA-F]{64}")) {
+            return ResponseEntity.badRequest().build();
         }
-        return ResponseEntity.status(404).build();
+        try {
+            boolean exists = advancedUploadService.checkQuickUpload(contentHash, user.getUserId());
+            if (exists) {
+                return ResponseEntity.ok().build();
+            }
+            return ResponseEntity.status(404).build();
+        } catch (Exception ex) {
+            return ResponseEntity.status(404).build();
+        }
     }
 
     /**
