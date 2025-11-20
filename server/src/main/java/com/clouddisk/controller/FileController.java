@@ -46,11 +46,14 @@ public class FileController {
 
     /**
      * 获取当前用户的文件列表。
+     * @param path 可选参数，指定要查询的目录路径，默认为根目录"/"
      */
     @GetMapping
-    public ResponseEntity<ApiResponse<List<FileMetadataDto>>> listFiles(@AuthenticationPrincipal UserPrincipal user) {
+    public ResponseEntity<ApiResponse<List<FileMetadataDto>>> listFiles(
+            @AuthenticationPrincipal UserPrincipal user,
+            @RequestParam(value = "path", required = false) String path) {
         ensureUser(user);
-        List<FileMetadataDto> files = fileService.listFiles(user.getUserId());
+        List<FileMetadataDto> files = fileService.listFiles(user.getUserId(), path);
         return ResponseEntity.ok(ApiResponse.success(files));
     }
 
