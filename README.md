@@ -1,4 +1,5 @@
-## EasyCloudDisk 实验报告
+注：本分支主要实现基础功能前后端页面的交互功能
+## EasyCloudDisk 实验报告 
 
 **小组成员:**
 
@@ -8,9 +9,7 @@
 
 **项目仓库**：
 
-https://github.com/Frank-whw/EasyCloudDisk/tree/hy
-
-https://github.com/Frank-whw/EasyCloudDisk/tree/zjyy
+https://github.com/Frank-whw/EasyCloudDisk
 
 ### 一、项目概览
 
@@ -765,4 +764,5 @@ python -m http.server 3000
   ![image-20251121112111324](C:\Users\32535\AppData\Roaming\Typora\typora-user-images\image-20251121112111324.png)
 
   ![image-20251121112143450](C:\Users\32535\AppData\Roaming\Typora\typora-user-images\image-20251121112143450.png)
+
 
