@@ -1,0 +1,84 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<configuration>
+
+  <!-- Read Spring Boot logging props if present, with sensible defaults -->
+  <springProperty scope="context" name="LOG_FILE" source="logging.file.name" defaultValue="logs/server.log"/>
+  <springProperty scope="context" name="CONSOLE_PATTERN" source="logging.pattern.console" defaultValue="%d{HH:mm:ss.SSS} [%thread] %-5level %logger{36} - %msg%n"/>
+  <springProperty scope="context" name="FILE_PATTERN" source="logging.pattern.file" defaultValue="%d{yyyy-MM-dd HH:mm:ss.SSS} [%thread] %-5level %logger{36} - %msg%n"/>
+
+  <!-- Console appender -->
+  <appender name="CONSOLE" class="ch.qos.logback.core.ConsoleAppender">
+    <encoder>
+      <pattern>${CONSOLE_PATTERN}</pattern>
+    </encoder>
+  </appender>
+
+  <!-- Rolling file appender: daily roll + size cap -->
+  <appender name="FILE" class="ch.qos.logback.core.rolling.RollingFileAppender">
+    <file>${LOG_FILE}</file>
+    <encoder>
+      <pattern>${FILE_PATTERN}</pattern>
+    </encoder>
+    <rollingPolicy class="ch.qos.logback.core.rolling.SizeAndTimeBasedRollingPolicy">
+      <!-- e.g. logs/server-2025-11-08.0.log.gz -->
+      <fileNamePattern>logs/server-%d{yyyy-MM-dd}.%i.log.gz</fileNamePattern>
+      <maxHistory>30</maxHistory>
+      <maxFileSize>50MB</maxFileSize>
+      <totalSizeCap>2GB</totalSizeCap>
+    </rollingPolicy>
+  </appender>
+
+  <!-- Async wrappers for performance -->
+  <appender name="ASYNC_CONSOLE" class="ch.qos.logback.classic.AsyncAppender">
+    <appender-ref ref="CONSOLE"/>
+    <queueSize>1024</queueSize>
+    <discardingThreshold>0</discardingThreshold>
+  </appender>
+
+  <appender name="ASYNC_FILE" class="ch.qos.logback.classic.AsyncAppender">
+    <appender-ref ref="FILE"/>
+    <queueSize>4096</queueSize>
+    <discardingThreshold>0</discardingThreshold>
+  </appender>
+
+  <!-- Development profile: verbose logs -->
+  <springProfile name="dev">
+    <logger name="org.springframework.security" level="DEBUG" additivity="false">
+      <appender-ref ref="ASYNC_CONSOLE"/>
+      <appender-ref ref="ASYNC_FILE"/>
+    </logger>
+    <logger name="com.clouddisk" level="DEBUG" additivity="false">
+      <appender-ref ref="ASYNC_CONSOLE"/>
+      <appender-ref ref="ASYNC_FILE"/>
+    </logger>
+    <root level="DEBUG">
+      <appender-ref ref="ASYNC_CONSOLE"/>
+      <appender-ref ref="ASYNC_FILE"/>
+    </root>
+  </springProfile>
+
+  <!-- Production profile: concise logs -->
+  <springProfile name="prod">
+    <logger name="org.springframework.security" level="WARN" additivity="false">
+      <appender-ref ref="ASYNC_CONSOLE"/>
+      <appender-ref ref="ASYNC_FILE"/>
+    </logger>
+    <logger name="com.clouddisk" level="INFO" additivity="false">
+      <appender-ref ref="ASYNC_CONSOLE"/>
+      <appender-ref ref="ASYNC_FILE"/>
+    </logger>
+    <root level="INFO">
+      <appender-ref ref="ASYNC_CONSOLE"/>
+      <appender-ref ref="ASYNC_FILE"/>
+    </root>
+  </springProfile>
+
+  <!-- Fallback if no profile is active -->
+  <springProfile name="default">
+    <root level="INFO">
+      <appender-ref ref="ASYNC_CONSOLE"/>
+      <appender-ref ref="ASYNC_FILE"/>
+    </root>
+  </springProfile>
+
+</configuration>

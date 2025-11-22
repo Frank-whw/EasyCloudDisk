@@ -1,0 +1,148 @@
+package com.clouddisk.client;
+
+import com.clouddisk.client.config.ClientProperties;
+import com.clouddisk.client.http.FileApiClient;
+import com.clouddisk.client.service.S3Service;
+import com.clouddisk.client.sync.DirectoryWatcher;
+import com.clouddisk.client.sync.SyncManager;
+import lombok.Data;
+import lombok.extern.slf4j.Slf4j;
+import org.apache.hc.client5.http.impl.classic.CloseableHttpClient;
+import org.apache.hc.client5.http.impl.classic.HttpClients;
+import org.apache.hc.client5.http.impl.io.PoolingHttpClientConnectionManager;
+import org.apache.hc.client5.http.config.ConnectionConfig;
+import org.apache.hc.core5.util.TimeValue;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.stereotype.Component;
+
+import java.io.File;
+import java.io.IOException;
+import java.nio.file.Path;
+import java.nio.file.Paths;
+import java.util.concurrent.TimeUnit;
+
+/**
+ * 客户端运行时上下文，集中管理配置、HTTP 客户端、同步管理器等共享组件。
+ * <p>
+ * 该类在应用启动时完成初始化，并提供统一的生命周期管理入口，确保资源使用安全可控。
+ */
+@Data
+@Slf4j
+@Component
+public class ClientRuntimeContext {
+    private String token;
+    private String userId;
+    
+    public void setToken(String token) {
+        this.token = token;
+        // 同时更新文件API客户端的认证令牌
+        if (this.fileApiClient != null) {
+            this.fileApiClient.setAuthToken(token);
+        }
+    }
+    
+    @Autowired
+    private ClientProperties config; // 配置
+    
+    @Autowired
+    private CloseableHttpClient httpClient; // HTTP客户端
+    
+    @Autowired
+    private SyncManager syncManager; // 同步管理器
+    
+    @Autowired
+    private DirectoryWatcher directoryWatcher; // 文件监听器
+    
+    @Autowired
+    private S3Service s3Service; // S3服务
+    
+    private FileApiClient fileApiClient; // 文件API客户端
+
+    /**
+     * 初始化运行时上下文。
+     * <p>
+     * 负责验证基础配置、构造 REST 客户端并准备好目录监听器和同步管理器。
+     */
+    public void initialize() {
+        log.info("初始化运行时上下文...");
+        
+        // 验证配置
+        config.validate();
+
+        // 创建文件API客户端（使用配置的服务器地址）
+        if(this.fileApiClient == null) this.fileApiClient = new FileApiClient(config.getServerUrl(), this.httpClient);
+        
+        // 设置认证令牌
+        if (this.token != null) {
+            this.fileApiClient.setAuthToken(this.token);
+        }
+
+        // 设置文件API客户端
+        this.syncManager.setFileApiClient(this.fileApiClient);
+        
+        // 设置S3服务
+        this.syncManager.setS3Service(this.s3Service);
+
+        // 配置文件监听器
+        try {
+            Path syncDir = Paths.get(config.getSyncDir()).toAbsolutePath().normalize();
+            File syncDirFile = syncDir.toFile();
+            
+            // 确保同步目录存在
+            if (!syncDirFile.exists()) {
+                log.info("同步目录不存在，尝试创建: {}", syncDirFile.getAbsolutePath());
+                if (!syncDirFile.mkdirs()) {
+                    log.error("无法创建同步目录: {}", syncDirFile.getAbsolutePath());
+                    throw new RuntimeException("同步目录创建失败");
+                }
+            }
+            
+            if (!syncDirFile.isDirectory()) {
+                log.error("同步目录路径不是一个有效的目录: {}", syncDirFile.getAbsolutePath());
+                throw new RuntimeException("同步目录不是一个有效的目录");
+            }
+            
+            // 设置监听目录
+            directoryWatcher.setWatchDir(syncDir);
+        } catch (IOException e) {
+            log.error("配置文件监听器失败", e);
+            throw new RuntimeException("配置文件监听器失败", e);
+        }
+        
+        log.info("运行时上下文初始化完成");
+    }
+    
+    /**
+     * 关闭并清理资源。
+     * <p>
+     * 包括关闭 HTTP 客户端、停止目录监听以及释放同步管理器等资源。
+     */
+    public void shutdown() {
+        log.info("关闭运行时上下文资源...");
+        
+        // 关闭HTTP客户端
+        if (this.httpClient != null) {
+            try {
+                this.httpClient.close();
+            } catch (IOException e) {
+                log.error("关闭HTTP客户端时发生错误", e);
+            }
+        }
+
+        // 停止目录监听
+        if (this.directoryWatcher != null) {
+            this.directoryWatcher.stop();
+        }
+
+        // 停止同步管理器
+        if (this.syncManager != null) {
+            this.syncManager.stopWatching();
+        }
+
+        // 清理认证信息
+        this.token = null;
+        this.userId = null;
+        
+        log.info("运行时上下文资源已关闭");
+    }
+}

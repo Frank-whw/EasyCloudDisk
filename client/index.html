@@ -1,0 +1,885 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Cloud Disk - 云盘系统</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Roboto', 'Helvetica', 'Arial', sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            padding: 20px;
+        }
+
+        .container {
+            background: white;
+            border-radius: 20px;
+            box-shadow: 0 20px 60px rgba(0,0,0,0.3);
+            width: 100%;
+            max-width: 900px;
+            overflow: hidden;
+        }
+
+        .header {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            padding: 30px;
+            text-align: center;
+        }
+
+        .header h1 {
+            font-size: 32px;
+            margin-bottom: 10px;
+        }
+
+        .header p {
+            opacity: 0.9;
+            font-size: 14px;
+        }
+
+        .content {
+            padding: 30px;
+        }
+
+        .auth-section, .main-section {
+            display: none;
+        }
+
+        .auth-section.active, .main-section.active {
+            display: block;
+        }
+
+        .form-group {
+            margin-bottom: 20px;
+        }
+
+        .form-group label {
+            display: block;
+            margin-bottom: 8px;
+            color: #333;
+            font-weight: 500;
+        }
+
+        .form-group input {
+            width: 100%;
+            padding: 12px;
+            border: 2px solid #e0e0e0;
+            border-radius: 8px;
+            font-size: 14px;
+            transition: border-color 0.3s;
+        }
+
+        .form-group input:focus {
+            outline: none;
+            border-color: #667eea;
+        }
+
+        .btn {
+            width: 100%;
+            padding: 14px;
+            border: none;
+            border-radius: 8px;
+            font-size: 16px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.3s;
+        }
+
+        .btn-primary {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+        }
+
+        .btn-primary:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 10px 20px rgba(102, 126, 234, 0.4);
+        }
+
+        .btn-secondary {
+            background: #f5f5f5;
+            color: #666;
+            margin-top: 10px;
+        }
+
+        .btn-secondary:hover {
+            background: #e0e0e0;
+        }
+
+        .btn-danger {
+            background: #ef4444;
+            color: white;
+            padding: 8px 16px;
+            width: auto;
+            font-size: 14px;
+        }
+
+        .btn-danger:hover {
+            background: #dc2626;
+        }
+
+        .upload-area {
+            border: 2px dashed #667eea;
+            border-radius: 12px;
+            padding: 40px;
+            text-align: center;
+            margin-bottom: 30px;
+            transition: all 0.3s;
+            cursor: pointer;
+        }
+
+        .upload-area:hover {
+            background: #f8f9ff;
+            border-color: #764ba2;
+        }
+
+        .upload-area input[type="file"] {
+            display: none;
+        }
+
+        .upload-icon {
+            font-size: 48px;
+            margin-bottom: 10px;
+        }
+
+        .file-list {
+            margin-top: 30px;
+        }
+
+        .file-item {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            padding: 15px;
+            border: 1px solid #e0e0e0;
+            border-radius: 8px;
+            margin-bottom: 10px;
+            transition: all 0.3s;
+        }
+
+        .file-item:hover {
+            background: #f8f9ff;
+            border-color: #667eea;
+        }
+
+        .file-info {
+            flex: 1;
+        }
+
+        .file-name {
+            font-weight: 600;
+            color: #333;
+            margin-bottom: 5px;
+        }
+
+        .file-meta {
+            font-size: 12px;
+            color: #999;
+        }
+
+        .file-actions {
+            display: flex;
+            gap: 10px;
+        }
+
+        .btn-small {
+            padding: 8px 16px;
+            font-size: 14px;
+            width: auto;
+        }
+
+        .alert {
+            padding: 12px 16px;
+            border-radius: 8px;
+            margin-bottom: 20px;
+            font-size: 14px;
+        }
+
+        .alert-success {
+            background: #d1fae5;
+            color: #065f46;
+        }
+
+        .alert-error {
+            background: #fee2e2;
+            color: #991b1b;
+        }
+
+        .user-info {
+            background: #f8f9ff;
+            padding: 15px;
+            border-radius: 8px;
+            margin-bottom: 20px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .loading {
+            display: none;
+            text-align: center;
+            padding: 20px;
+            color: #667eea;
+        }
+
+        .loading.active {
+            display: block;
+        }
+
+        .spinner {
+            border: 3px solid #f3f3f3;
+            border-top: 3px solid #667eea;
+            border-radius: 50%;
+            width: 40px;
+            height: 40px;
+            animation: spin 1s linear infinite;
+            margin: 0 auto 10px;
+        }
+
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+
+        .empty-state {
+            text-align: center;
+            padding: 40px;
+            color: #999;
+        }
+
+        .empty-state-icon {
+            font-size: 64px;
+            margin-bottom: 10px;
+            opacity: 0.5;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>☁️ Cloud Disk</h1>
+            <p>安全、快速的云端存储服务</p>
+        </div>
+
+        <div class="content">
+            <!-- 认证部分 -->
+            <div class="auth-section active" id="authSection">
+                <div id="alertContainer"></div>
+                
+                <div id="loginForm">
+                    <h2 style="margin-bottom: 20px; color: #333;">登录</h2>
+                    <div class="form-group">
+                        <label>邮箱</label>
+                        <input type="email" id="loginEmail" placeholder="请输入邮箱">
+                    </div>
+                    <div class="form-group">
+                        <label>密码</label>
+                        <input type="password" id="loginPassword" placeholder="请输入密码">
+                    </div>
+                    <button class="btn btn-primary" onclick="login()">登录</button>
+                    <button class="btn btn-secondary" onclick="showRegister()">还没有账号？立即注册</button>
+                </div>
+
+                <div id="registerForm" style="display: none;">
+                    <h2 style="margin-bottom: 20px; color: #333;">注册</h2>
+                    <div class="form-group">
+                        <label>邮箱</label>
+                        <input type="email" id="registerEmail" placeholder="请输入邮箱">
+                    </div>
+                    <div class="form-group">
+                        <label>密码</label>
+                        <input type="password" id="registerPassword" placeholder="请输入密码（至少8位，包含字母和数字）">
+                    </div>
+                    <button class="btn btn-primary" onclick="register()">注册</button>
+                    <button class="btn btn-secondary" onclick="showLogin()">已有账号？立即登录</button>
+                </div>
+            </div>
+
+            <!-- 主功能部分 -->
+            <div class="main-section" id="mainSection">
+                <div class="user-info">
+                    <div>
+                        <strong>👤 <span id="userEmail"></span></strong>
+                    </div>
+                    <button class="btn btn-small btn-secondary" onclick="logout()">退出登录</button>
+                </div>
+
+                <div id="mainAlertContainer"></div>
+
+                <!-- 导航标签 -->
+                <div class="tabs">
+                    <div class="tab active" onclick="switchTab('my')" id="tab-my">我的文件</div>
+                    <div class="tab" onclick="switchTab('shared')" id="tab-shared">与我共享</div>
+                </div>
+
+                <!-- 我的文件视图 -->
+                <div id="view-my">
+                    <!-- 上传区域 -->
+                    <div class="upload-area" onclick="document.getElementById('fileInput').click()">
+                        <div class="upload-icon">📤</div>
+                        <h3>点击上传文件</h3>
+                        <p style="color: #999; margin-top: 8px;">支持任意文件类型，最大 100MB</p>
+                        <input type="file" id="fileInput" onchange="uploadFile()">
+                    </div>
+
+                    <!-- 加载状态 -->
+                    <div class="loading" id="loading">
+                        <div class="spinner"></div>
+                        <p>处理中...</p>
+                    </div>
+
+                    <!-- 文件列表 -->
+                    <div class="file-list">
+                        <h3 style="margin-bottom: 15px; color: #333;">我的文件列表</h3>
+                        <div id="fileListContainer">
+                            <div class="empty-state">
+                                <div class="empty-state-icon">📁</div>
+                                <p>还没有上传文件</p>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- 共享文件视图 -->
+                <div id="view-shared" style="display: none;">
+                    <div class="file-list">
+                        <h3 style="margin-bottom: 15px; color: #333;">他人共享给我的文件</h3>
+                        <div id="sharedListContainer">
+                            <div class="empty-state">
+                                <div class="empty-state-icon">🤝</div>
+                                <p>还没有收到共享文件</p>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- 共享弹窗 -->
+    <div id="shareModal" class="modal">
+        <div class="modal-content">
+            <span class="close" onclick="closeShareModal()">&times;</span>
+            <h2>分享文件</h2>
+            <p id="shareFileName" style="margin-bottom: 20px; color: #666;"></p>
+            
+            <div class="form-group">
+                <label>目标用户邮箱</label>
+                <input type="email" id="shareEmail" placeholder="recipient@example.com">
+            </div>
+            
+            <div class="form-group">
+                <label>权限</label>
+                <select id="sharePermission" style="width: 100%; padding: 12px; border: 2px solid #e0e0e0; border-radius: 8px;">
+                    <option value="READ">只读 (Read)</option>
+                    <option value="WRITE">读写 (Write)</option>
+                </select>
+            </div>
+
+            <div class="form-group">
+                <label>有效期 (小时)</label>
+                <input type="number" id="shareDuration" placeholder="24" value="24">
+                <small style="color: #999;">留空或0表示永久有效</small>
+            </div>
+
+            <button class="btn btn-primary" onclick="submitShare()">确认分享</button>
+        </div>
+    </div>
+
+    <style>
+        /* 新增样式 */
+        .tabs {
+            display: flex;
+            margin-bottom: 20px;
+            border-bottom: 2px solid #e0e0e0;
+        }
+        
+        .tab {
+            padding: 10px 20px;
+            cursor: pointer;
+            font-weight: 600;
+            color: #999;
+            border-bottom: 2px solid transparent;
+            margin-bottom: -2px;
+            transition: all 0.3s;
+        }
+        
+        .tab.active {
+            color: #667eea;
+            border-bottom-color: #667eea;
+        }
+
+        .tab:hover {
+            color: #667eea;
+        }
+
+        /* Modal 样式 */
+        .modal {
+            display: none; 
+            position: fixed; 
+            z-index: 1000; 
+            left: 0;
+            top: 0;
+            width: 100%; 
+            height: 100%; 
+            overflow: auto; 
+            background-color: rgba(0,0,0,0.5); 
+            align-items: center;
+            justify-content: center;
+        }
+
+        .modal.active {
+            display: flex;
+        }
+
+        .modal-content {
+            background-color: #fefefe;
+            padding: 30px;
+            border-radius: 20px;
+            width: 90%;
+            max-width: 500px;
+            position: relative;
+            box-shadow: 0 20px 60px rgba(0,0,0,0.3);
+        }
+
+        .close {
+            color: #aaa;
+            float: right;
+            font-size: 28px;
+            font-weight: bold;
+            cursor: pointer;
+            position: absolute;
+            right: 20px;
+            top: 15px;
+        }
+
+        .close:hover,
+        .close:focus {
+            color: black;
+            text-decoration: none;
+            cursor: pointer;
+        }
+    </style>
+
+    <script>
+        // 配置 - 请修改为你的后端服务器地址
+        // 本地测试: http://localhost:8080
+        // EC2 域名: http://ec2-54-95-61-230.ap-northeast-1.compute.amazonaws.com:8080
+        // EC2 IP: http://54.95.61.230:8080
+        const API_BASE_URL = 'http://ec2-54-95-61-230.ap-northeast-1.compute.amazonaws.com:8080';
+        
+        let authToken = localStorage.getItem('authToken');
+        let userEmail = localStorage.getItem('userEmail');
+        let currentShareFileId = null;
+
+        // 初始化
+        if (authToken && userEmail) {
+            showMainSection();
+            loadFiles();
+        }
+
+        // 切换标签页
+        function switchTab(tab) {
+            document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
+            document.getElementById(`tab-${tab}`).classList.add('active');
+            
+            if (tab === 'my') {
+                document.getElementById('view-my').style.display = 'block';
+                document.getElementById('view-shared').style.display = 'none';
+                loadFiles();
+            } else {
+                document.getElementById('view-my').style.display = 'none';
+                document.getElementById('view-shared').style.display = 'block';
+                loadSharedFiles();
+            }
+        }
+
+        // 显示/隐藏表单
+        function showRegister() {
+            document.getElementById('loginForm').style.display = 'none';
+            document.getElementById('registerForm').style.display = 'block';
+            clearAlert();
+        }
+
+        function showLogin() {
+            document.getElementById('registerForm').style.display = 'none';
+            document.getElementById('loginForm').style.display = 'block';
+            clearAlert();
+        }
+
+        // 显示提示信息
+        function showAlert(message, type = 'success', container = 'alertContainer') {
+            const alertDiv = document.createElement('div');
+            alertDiv.className = `alert alert-${type}`;
+            alertDiv.textContent = message;
+            const containerEl = document.getElementById(container);
+            containerEl.innerHTML = '';
+            containerEl.appendChild(alertDiv);
+            setTimeout(() => alertDiv.remove(), 5000);
+        }
+
+        function clearAlert() {
+            document.getElementById('alertContainer').innerHTML = '';
+            document.getElementById('mainAlertContainer').innerHTML = '';
+        }
+
+        // 注册
+        async function register() {
+            const email = document.getElementById('registerEmail').value;
+            const password = document.getElementById('registerPassword').value;
+
+            if (!email || !password) {
+                showAlert('请填写所有字段', 'error');
+                return;
+            }
+
+            try {
+                const response = await fetch(`${API_BASE_URL}/auth/register`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ email, password })
+                });
+
+                const data = await response.json();
+
+                if (data.success) {
+                    authToken = data.data.token;
+                    userEmail = email;
+                    localStorage.setItem('authToken', authToken);
+                    localStorage.setItem('userEmail', userEmail);
+                    showAlert('注册成功！', 'success');
+                    setTimeout(() => {
+                        showMainSection();
+                        loadFiles();
+                    }, 1000);
+                } else {
+                    showAlert(data.message || '注册失败', 'error');
+                }
+            } catch (error) {
+                showAlert('网络错误：' + error.message, 'error');
+            }
+        }
+
+        // 登录
+        async function login() {
+            const email = document.getElementById('loginEmail').value;
+            const password = document.getElementById('loginPassword').value;
+
+            if (!email || !password) {
+                showAlert('请填写所有字段', 'error');
+                return;
+            }
+
+            try {
+                const response = await fetch(`${API_BASE_URL}/auth/login`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ email, password })
+                });
+
+                const data = await response.json();
+
+                if (data.success) {
+                    authToken = data.data.token;
+                    userEmail = email;
+                    localStorage.setItem('authToken', authToken);
+                    localStorage.setItem('userEmail', userEmail);
+                    showAlert('登录成功！', 'success');
+                    setTimeout(() => {
+                        showMainSection();
+                        loadFiles();
+                    }, 1000);
+                } else {
+                    showAlert(data.message || '登录失败', 'error');
+                }
+            } catch (error) {
+                showAlert('网络错误：' + error.message, 'error');
+            }
+        }
+
+        // 退出登录
+        function logout() {
+            localStorage.removeItem('authToken');
+            localStorage.removeItem('userEmail');
+            authToken = null;
+            userEmail = null;
+            document.getElementById('mainSection').classList.remove('active');
+            document.getElementById('authSection').classList.add('active');
+            clearAlert();
+        }
+
+        // 显示主界面
+        function showMainSection() {
+            document.getElementById('authSection').classList.remove('active');
+            document.getElementById('mainSection').classList.add('active');
+            document.getElementById('userEmail').textContent = userEmail;
+        }
+
+        // 上传文件
+        async function uploadFile() {
+            const fileInput = document.getElementById('fileInput');
+            const file = fileInput.files[0];
+
+            if (!file) return;
+
+            if (file.size > 100 * 1024 * 1024) {
+                showAlert('文件大小不能超过 100MB', 'error', 'mainAlertContainer');
+                return;
+            }
+
+            const formData = new FormData();
+            formData.append('file', file);
+            formData.append('filePath', '/' + file.name);
+
+            document.getElementById('loading').classList.add('active');
+
+            try {
+                const response = await fetch(`${API_BASE_URL}/files/upload`, {
+                    method: 'POST',
+                    headers: { 'Authorization': `Bearer ${authToken}` },
+                    body: formData
+                });
+
+                const data = await response.json();
+
+                if (data.success) {
+                    showAlert('上传成功！', 'success', 'mainAlertContainer');
+                    loadFiles();
+                } else {
+                    showAlert(data.message || '上传失败', 'error', 'mainAlertContainer');
+                }
+            } catch (error) {
+                showAlert('上传错误：' + error.message, 'error', 'mainAlertContainer');
+            } finally {
+                document.getElementById('loading').classList.remove('active');
+                fileInput.value = '';
+            }
+        }
+
+        // 加载文件列表
+        async function loadFiles() {
+            try {
+                const response = await fetch(`${API_BASE_URL}/files`, {
+                    headers: { 'Authorization': `Bearer ${authToken}` }
+                });
+
+                const data = await response.json();
+
+                if (data.success && data.data.length > 0) {
+                    renderFiles(data.data);
+                } else {
+                    document.getElementById('fileListContainer').innerHTML = `
+                        <div class="empty-state">
+                            <div class="empty-state-icon">📁</div>
+                            <p>还没有上传文件</p>
+                        </div>
+                    `;
+                }
+            } catch (error) {
+                showAlert('加载文件列表失败', 'error', 'mainAlertContainer');
+            }
+        }
+
+        // 渲染文件列表
+        function renderFiles(files) {
+            const container = document.getElementById('fileListContainer');
+            container.innerHTML = files.map(file => `
+                <div class="file-item">
+                    <div class="file-info">
+                        <div class="file-name">📄 ${file.name} <span style="font-size: 12px; color: #667eea; background: #f0f4ff; padding: 2px 6px; border-radius: 4px;">v${file.version || 1}</span></div>
+                        <div class="file-meta">
+                            大小: ${formatFileSize(file.fileSize)} | 
+                            上传时间: ${formatDate(file.createdAt)}
+                        </div>
+                    </div>
+                    <div class="file-actions">
+                        <button class="btn btn-secondary btn-small" onclick="openShareModal('${file.fileId}', '${file.name}')">
+                            分享
+                        </button>
+                        <button class="btn btn-primary btn-small" onclick="downloadFile('${file.fileId}', '${file.name}')">
+                            下载
+                        </button>
+                        <button class="btn btn-danger btn-small" onclick="deleteFile('${file.fileId}')">
+                            删除
+                        </button>
+                    </div>
+                </div>
+            `).join('');
+        }
+
+        // 加载共享文件列表
+        async function loadSharedFiles() {
+            try {
+                const response = await fetch(`${API_BASE_URL}/collaboration/shared-with-me`, {
+                    headers: { 'Authorization': `Bearer ${authToken}` }
+                });
+
+                const data = await response.json();
+
+                if (data.success && data.data.length > 0) {
+                    renderSharedFiles(data.data);
+                } else {
+                    document.getElementById('sharedListContainer').innerHTML = `
+                        <div class="empty-state">
+                            <div class="empty-state-icon">🤝</div>
+                            <p>还没有收到共享文件</p>
+                        </div>
+                    `;
+                }
+            } catch (error) {
+                showAlert('加载共享文件失败', 'error', 'mainAlertContainer');
+            }
+        }
+
+        // 渲染共享文件列表
+        function renderSharedFiles(files) {
+            const container = document.getElementById('sharedListContainer');
+            container.innerHTML = files.map(file => `
+                <div class="file-item">
+                    <div class="file-info">
+                        <div class="file-name">📄 ${file.name} <span style="font-size: 12px; color: #667eea; background: #f0f4ff; padding: 2px 6px; border-radius: 4px;">v${file.version || 1}</span></div>
+                        <div class="file-meta">
+                            来自: ${file.ownerId || '未知用户'} | 
+                            大小: ${formatFileSize(file.fileSize)}
+                        </div>
+                    </div>
+                    <div class="file-actions">
+                        <button class="btn btn-primary btn-small" onclick="downloadFile('${file.fileId}', '${file.name}')">
+                            下载
+                        </button>
+                    </div>
+                </div>
+            `).join('');
+        }
+
+        // 分享相关功能
+        function openShareModal(fileId, fileName) {
+            currentShareFileId = fileId;
+            document.getElementById('shareFileName').textContent = `正在分享: ${fileName}`;
+            document.getElementById('shareModal').classList.add('active');
+        }
+
+        function closeShareModal() {
+            document.getElementById('shareModal').classList.remove('active');
+            currentShareFileId = null;
+            document.getElementById('shareEmail').value = '';
+            document.getElementById('shareDuration').value = '24';
+        }
+
+        async function submitShare() {
+            const email = document.getElementById('shareEmail').value;
+            const permission = document.getElementById('sharePermission').value;
+            const duration = document.getElementById('shareDuration').value;
+
+            if (!email) {
+                alert('请输入目标邮箱');
+                return;
+            }
+
+            let expiresAt = null;
+            if (duration && duration > 0) {
+                const date = new Date();
+                date.setHours(date.getHours() + parseInt(duration));
+                expiresAt = date.toISOString();
+            }
+
+            try {
+                const response = await fetch(`${API_BASE_URL}/collaboration/shares?fileId=${currentShareFileId}`, {
+                    method: 'POST',
+                    headers: { 
+                        'Content-Type': 'application/json',
+                        'Authorization': `Bearer ${authToken}` 
+                    },
+                    body: JSON.stringify({
+                        targetEmail: email,
+                        permission: permission,
+                        expiresAt: expiresAt
+                    })
+                });
+
+                const data = await response.json();
+
+                if (data.success) {
+                    showAlert('分享成功！', 'success', 'mainAlertContainer');
+                    closeShareModal();
+                } else {
+                    alert(data.message || '分享失败');
+                }
+            } catch (error) {
+                alert('网络错误：' + error.message);
+            }
+        }
+
+        // 下载文件
+        async function downloadFile(fileId, fileName) {
+            try {
+                const response = await fetch(`${API_BASE_URL}/files/${fileId}/download`, {
+                    headers: { 'Authorization': `Bearer ${authToken}` }
+                });
+
+                if (response.ok) {
+                    const blob = await response.blob();
+                    const url = window.URL.createObjectURL(blob);
+                    const a = document.createElement('a');
+                    a.href = url;
+                    a.download = fileName;
+                    document.body.appendChild(a);
+                    a.click();
+                    window.URL.revokeObjectURL(url);
+                    document.body.removeChild(a);
+                    showAlert('下载成功！', 'success', 'mainAlertContainer');
+                } else {
+                    showAlert('下载失败', 'error', 'mainAlertContainer');
+                }
+            } catch (error) {
+                showAlert('下载错误：' + error.message, 'error', 'mainAlertContainer');
+            }
+        }
+
+        // 删除文件
+        async function deleteFile(fileId) {
+            if (!confirm('确定要删除这个文件吗？')) return;
+
+            try {
+                const response = await fetch(`${API_BASE_URL}/files/${fileId}`, {
+                    method: 'DELETE',
+                    headers: { 'Authorization': `Bearer ${authToken}` }
+                });
+
+                const data = await response.json();
+
+                if (data.success) {
+                    showAlert('删除成功！', 'success', 'mainAlertContainer');
+                    loadFiles();
+                } else {
+                    showAlert(data.message || '删除失败', 'error', 'mainAlertContainer');
+                }
+            } catch (error) {
+                showAlert('删除错误：' + error.message, 'error', 'mainAlertContainer');
+            }
+        }
+
+        // 格式化文件大小
+        function formatFileSize(bytes) {
+            if (bytes < 1024) return bytes + ' B';
+            if (bytes < 1024 * 1024) return (bytes / 1024).toFixed(2) + ' KB';
+            return (bytes / (1024 * 1024)).toFixed(2) + ' MB';
+        }
+
+        // 格式化日期
+        function formatDate(dateString) {
+            const date = new Date(dateString);
+            return date.toLocaleString('zh-CN');
+        }
+    </script>
+</body>
+</html>

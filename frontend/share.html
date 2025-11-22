@@ -1,0 +1,393 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>文件分享 - EasyCloudDisk</title>
+    <link rel="stylesheet" href="css/main.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <style>
+        .share-page {
+            min-height: 100vh;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            padding: 20px;
+        }
+        
+        .share-container {
+            background: white;
+            border-radius: 12px;
+            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.2);
+            max-width: 500px;
+            width: 100%;
+            overflow: hidden;
+        }
+        
+        .share-header {
+            background: #667eea;
+            color: white;
+            padding: 30px;
+            text-align: center;
+        }
+        
+        .share-header h1 {
+            margin: 0 0 10px 0;
+            font-size: 24px;
+        }
+        
+        .share-header p {
+            margin: 0;
+            opacity: 0.9;
+        }
+        
+        .share-content {
+            padding: 30px;
+        }
+        
+        .file-info {
+            display: flex;
+            align-items: center;
+            padding: 20px;
+            background: #f8f9fa;
+            border-radius: 8px;
+            margin-bottom: 20px;
+        }
+        
+        .file-icon {
+            font-size: 48px;
+            color: #667eea;
+            margin-right: 20px;
+        }
+        
+        .file-details h3 {
+            margin: 0 0 5px 0;
+            color: #333;
+        }
+        
+        .file-meta {
+            color: #666;
+            font-size: 14px;
+        }
+        
+        .password-form {
+            margin-bottom: 20px;
+        }
+        
+        .download-section {
+            text-align: center;
+        }
+        
+        .download-btn {
+            background: #28a745;
+            color: white;
+            border: none;
+            padding: 12px 30px;
+            border-radius: 6px;
+            font-size: 16px;
+            cursor: pointer;
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+            transition: background-color 0.3s;
+        }
+        
+        .download-btn:hover {
+            background: #218838;
+        }
+        
+        .download-btn:disabled {
+            background: #6c757d;
+            cursor: not-allowed;
+        }
+        
+        .share-info {
+            background: #e9ecef;
+            padding: 15px;
+            border-radius: 6px;
+            margin-top: 20px;
+            font-size: 14px;
+            color: #666;
+        }
+        
+        .error-message {
+            background: #f8d7da;
+            color: #721c24;
+            padding: 15px;
+            border-radius: 6px;
+            margin-bottom: 20px;
+            text-align: center;
+        }
+        
+        .loading {
+            text-align: center;
+            padding: 40px;
+            color: #666;
+        }
+        
+        .spinner {
+            display: inline-block;
+            width: 20px;
+            height: 20px;
+            border: 3px solid #f3f3f3;
+            border-top: 3px solid #667eea;
+            border-radius: 50%;
+            animation: spin 1s linear infinite;
+            margin-right: 10px;
+        }
+        
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+    </style>
+</head>
+<body>
+    <div class="share-page">
+        <div class="share-container">
+            <div class="share-header">
+                <h1><i class="fas fa-cloud"></i> EasyCloudDisk</h1>
+                <p>文件分享</p>
+            </div>
+            
+            <div class="share-content">
+                <div id="loadingSection" class="loading">
+                    <div class="spinner"></div>
+                    加载中...
+                </div>
+                
+                <div id="errorSection" class="error-message" style="display: none;">
+                    <i class="fas fa-exclamation-triangle"></i>
+                    <span id="errorMessage"></span>
+                </div>
+                
+                <div id="shareSection" style="display: none;">
+                    <div class="file-info">
+                        <div class="file-icon">
+                            <i id="fileIcon" class="fas fa-file"></i>
+                        </div>
+                        <div class="file-details">
+                            <h3 id="fileName"></h3>
+                            <div class="file-meta">
+                                <span id="fileSize"></span>
+                                <span id="shareInfo"></span>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <div id="passwordSection" class="password-form" style="display: none;">
+                        <div class="form-group">
+                            <label for="sharePassword">
+                                <i class="fas fa-lock"></i> 请输入访问密码
+                            </label>
+                            <input type="password" id="sharePassword" class="form-control" placeholder="输入密码">
+                        </div>
+                        <button class="btn btn-primary btn-block" onclick="shareViewer.validatePassword()">
+                            <i class="fas fa-unlock"></i> 验证密码
+                        </button>
+                    </div>
+                    
+                    <div id="downloadSection" class="download-section" style="display: none;">
+                        <button id="downloadBtn" class="download-btn" onclick="shareViewer.downloadFile()">
+                            <i class="fas fa-download"></i>
+                            下载文件
+                        </button>
+                        
+                        <div class="share-info">
+                            <div><i class="fas fa-user"></i> 分享者：<span id="ownerEmail"></span></div>
+                            <div><i class="fas fa-download"></i> 下载次数：<span id="downloadCount"></span></div>
+                            <div id="expiresInfo" style="display: none;">
+                                <i class="fas fa-clock"></i> 过期时间：<span id="expiresAt"></span>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script src="js/config.js"></script>
+    <script src="js/utils.js"></script>
+    <script>
+        // 分享查看器
+        const shareViewer = {
+            shareId: null,
+            shareData: null,
+            
+            init() {
+                // 从URL获取分享ID
+                const urlParams = new URLSearchParams(window.location.search);
+                this.shareId = urlParams.get('id');
+                
+                if (!this.shareId) {
+                    this.showError('无效的分享链接');
+                    return;
+                }
+                
+                this.loadShareInfo();
+            },
+            
+            async loadShareInfo() {
+                try {
+                    const response = await fetch(`${CONFIG.API_BASE_URL}/shares/${this.shareId}/info`);
+                    const result = await response.json();
+                    
+                    if (result.success) {
+                        this.shareData = result.data;
+                        this.renderShareInfo();
+                    } else {
+                        this.showError(result.message || '分享不存在或已过期');
+                    }
+                } catch (error) {
+                    console.error('加载分享信息失败:', error);
+                    this.showError('加载失败，请稍后重试');
+                }
+            },
+            
+            renderShareInfo() {
+                document.getElementById('loadingSection').style.display = 'none';
+                document.getElementById('shareSection').style.display = 'block';
+                
+                // 设置文件信息
+                document.getElementById('fileName').textContent = this.shareData.fileName;
+                document.getElementById('fileSize').textContent = this.formatFileSize(this.shareData.fileSize || 0);
+                document.getElementById('ownerEmail').textContent = this.shareData.ownerEmail;
+                document.getElementById('downloadCount').textContent = 
+                    `${this.shareData.downloadCount}/${this.shareData.maxDownloads || '∞'}`;
+                
+                // 设置文件图标
+                const fileIcon = document.getElementById('fileIcon');
+                fileIcon.className = 'fas ' + this.getFileIcon(this.shareData.fileName);
+                
+                // 显示过期时间
+                if (this.shareData.expiresAt) {
+                    document.getElementById('expiresInfo').style.display = 'block';
+                    document.getElementById('expiresAt').textContent = 
+                        new Date(this.shareData.expiresAt).toLocaleString();
+                }
+                
+                // 检查是否需要密码
+                if (this.shareData.hasPassword) {
+                    document.getElementById('passwordSection').style.display = 'block';
+                } else {
+                    document.getElementById('downloadSection').style.display = 'block';
+                }
+            },
+            
+            async validatePassword() {
+                const password = document.getElementById('sharePassword').value;
+                if (!password) {
+                    alert('请输入密码');
+                    return;
+                }
+                
+                try {
+                    const response = await fetch(`${CONFIG.API_BASE_URL}/shares/${this.shareId}/validate`, {
+                        method: 'POST',
+                        headers: {
+                            'Content-Type': 'application/json'
+                        },
+                        body: JSON.stringify({ password })
+                    });
+                    
+                    const result = await response.json();
+                    
+                    if (result.success && result.data.valid) {
+                        document.getElementById('passwordSection').style.display = 'none';
+                        document.getElementById('downloadSection').style.display = 'block';
+                    } else {
+                        alert('密码错误');
+                    }
+                } catch (error) {
+                    console.error('验证密码失败:', error);
+                    alert('验证失败，请稍后重试');
+                }
+            },
+            
+            async downloadFile() {
+                const password = document.getElementById('sharePassword').value;
+                const downloadBtn = document.getElementById('downloadBtn');
+                
+                downloadBtn.disabled = true;
+                downloadBtn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> 下载中...';
+                
+                try {
+                    const url = `${CONFIG.API_BASE_URL}/shares/${this.shareId}/download` + 
+                               (password ? `?password=${encodeURIComponent(password)}` : '');
+                    
+                    const response = await fetch(url);
+                    
+                    if (response.ok) {
+                        const blob = await response.blob();
+                        const downloadUrl = window.URL.createObjectURL(blob);
+                        const a = document.createElement('a');
+                        a.href = downloadUrl;
+                        a.download = this.shareData.fileName;
+                        document.body.appendChild(a);
+                        a.click();
+                        document.body.removeChild(a);
+                        window.URL.revokeObjectURL(downloadUrl);
+                        
+                        // 更新下载次数
+                        this.shareData.downloadCount++;
+                        document.getElementById('downloadCount').textContent = 
+                            `${this.shareData.downloadCount}/${this.shareData.maxDownloads || '∞'}`;
+                    } else {
+                        const result = await response.json();
+                        alert(result.message || '下载失败');
+                    }
+                } catch (error) {
+                    console.error('下载失败:', error);
+                    alert('下载失败，请稍后重试');
+                } finally {
+                    downloadBtn.disabled = false;
+                    downloadBtn.innerHTML = '<i class="fas fa-download"></i> 下载文件';
+                }
+            },
+            
+            showError(message) {
+                document.getElementById('loadingSection').style.display = 'none';
+                document.getElementById('errorSection').style.display = 'block';
+                document.getElementById('errorMessage').textContent = message;
+            },
+            
+            getFileIcon(fileName) {
+                const ext = fileName.split('.').pop().toLowerCase();
+                const iconMap = {
+                    // 图片
+                    'jpg': 'fa-image', 'jpeg': 'fa-image', 'png': 'fa-image', 'gif': 'fa-image', 'bmp': 'fa-image',
+                    // 视频
+                    'mp4': 'fa-video', 'avi': 'fa-video', 'mov': 'fa-video', 'wmv': 'fa-video', 'flv': 'fa-video',
+                    // 音频
+                    'mp3': 'fa-music', 'wav': 'fa-music', 'flac': 'fa-music', 'aac': 'fa-music',
+                    // 文档
+                    'pdf': 'fa-file-pdf', 'doc': 'fa-file-word', 'docx': 'fa-file-word',
+                    'xls': 'fa-file-excel', 'xlsx': 'fa-file-excel',
+                    'ppt': 'fa-file-powerpoint', 'pptx': 'fa-file-powerpoint',
+                    'txt': 'fa-file-alt',
+                    // 压缩包
+                    'zip': 'fa-file-archive', 'rar': 'fa-file-archive', '7z': 'fa-file-archive',
+                    // 代码
+                    'js': 'fa-file-code', 'html': 'fa-file-code', 'css': 'fa-file-code', 'java': 'fa-file-code',
+                    'py': 'fa-file-code', 'cpp': 'fa-file-code', 'c': 'fa-file-code'
+                };
+                return iconMap[ext] || 'fa-file';
+            },
+            
+            formatFileSize(bytes) {
+                if (bytes === 0) return '0 B';
+                const k = 1024;
+                const sizes = ['B', 'KB', 'MB', 'GB', 'TB'];
+                const i = Math.floor(Math.log(bytes) / Math.log(k));
+                return parseFloat((bytes / Math.pow(k, i)).toFixed(2)) + ' ' + sizes[i];
+            }
+        };
+        
+        // 页面加载完成后初始化
+        document.addEventListener('DOMContentLoaded', () => {
+            shareViewer.init();
+        });
+    </script>
+</body>
+</html>

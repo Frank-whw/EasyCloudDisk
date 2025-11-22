@@ -1,0 +1,62 @@
+package com.clouddisk.entity;
+
+import jakarta.persistence.Column;
+import jakarta.persistence.Entity;
+import jakarta.persistence.Id;
+import jakarta.persistence.PrePersist;
+import jakarta.persistence.PreUpdate;
+import jakarta.persistence.Table;
+import lombok.Data;
+
+import java.time.Instant;
+import java.util.UUID;
+
+/**
+ * 用户实体，存储账号与认证相关信息。
+ */
+@Entity
+@Data
+@Table(name = "users")
+public class User {
+
+    @Id
+    @Column(name = "user_id", nullable = false, updatable = false, length = 36)
+    private String userId;
+
+    @Column(name = "email", nullable = false, unique = true, length = 255)
+    private String email;
+
+    @Column(name = "password_hash", nullable = false, length = 255)
+    private String passwordHash;
+
+    @Column(name = "token_version", nullable = false)
+    private int tokenVersion;
+
+    @Column(name = "created_at", nullable = false, updatable = false)
+    private Instant createdAt;
+
+    @Column(name = "updated_at", nullable = false)
+    private Instant updatedAt;
+
+    
+    @PrePersist
+    public void prePersist() {
+        Instant now = Instant.now();
+        if (userId == null) {
+            userId = UUID.randomUUID().toString();
+        }
+        createdAt = now;
+        updatedAt = now;
+        if (email != null) {
+            email = email.toLowerCase();
+        }
+    }
+
+    @PreUpdate
+    public void preUpdate() {
+        updatedAt = Instant.now();
+        if (email != null) {
+            email = email.toLowerCase();
+        }
+    }
+}

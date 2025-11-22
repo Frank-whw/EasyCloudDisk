@@ -1,0 +1,200 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>分享功能调试</title>
+    <style>
+        body { font-family: Arial, sans-serif; padding: 20px; max-width: 800px; margin: 0 auto; }
+        .section { margin: 20px 0; padding: 15px; border: 1px solid #ddd; border-radius: 5px; }
+        button { padding: 10px 20px; margin: 5px; cursor: pointer; }
+        pre { background: #f5f5f5; padding: 10px; border-radius: 3px; overflow-x: auto; }
+        input, select { padding: 5px; margin: 5px 0; width: 100%; max-width: 400px; }
+        .error { color: red; }
+        .success { color: green; }
+    </style>
+</head>
+<body>
+    <h1>分享功能调试工具</h1>
+    
+    <div class="section">
+        <h3>1. 登录</h3>
+        <input type="email" id="email" placeholder="邮箱" value="22222@qq.com">
+        <input type="password" id="password" placeholder="密码" value="test123">
+        <button onclick="login()">登录</button>
+        <div id="loginResult"></div>
+    </div>
+    
+    <div class="section">
+        <h3>2. 获取文件列表</h3>
+        <button onclick="getFiles()">获取文件</button>
+        <div id="filesResult"></div>
+    </div>
+    
+    <div class="section">
+        <h3>3. 创建分享</h3>
+        <input type="text" id="fileId" placeholder="文件ID">
+        <input type="text" id="shareName" placeholder="分享名称" value="测试分享">
+        <select id="permission">
+            <option value="READ_ONLY">READ_ONLY</option>
+            <option value="DOWNLOAD_ONLY">DOWNLOAD_ONLY</option>
+            <option value="READ_WRITE">READ_WRITE</option>
+        </select>
+        <button onclick="createShare()">创建分享</button>
+        <div id="shareResult"></div>
+    </div>
+    
+    <div class="section">
+        <h3>请求/响应日志</h3>
+        <button onclick="clearLog()">清空日志</button>
+        <pre id="log"></pre>
+    </div>
+
+    <script>
+        const API_BASE_URL = 'http://localhost:8080/api';
+        let token = '';
+        
+        function log(message, isError = false) {
+            const logEl = document.getElementById('log');
+            const timestamp = new Date().toLocaleTimeString();
+            const className = isError ? 'error' : 'success';
+            logEl.innerHTML += `<span class="${className}">[${timestamp}] ${message}</span>\n`;
+            logEl.scrollTop = logEl.scrollHeight;
+        }
+        
+        function clearLog() {
+            document.getElementById('log').innerHTML = '';
+        }
+        
+        async function login() {
+            const email = document.getElementById('email').value;
+            const password = document.getElementById('password').value;
+            
+            log(`发送登录请求: ${email}`);
+            
+            try {
+                const response = await fetch(`${API_BASE_URL}/auth/login`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ email, password })
+                });
+                
+                const data = await response.json();
+                log(`登录响应: ${JSON.stringify(data)}`);
+                
+                if (data.success && data.data.token) {
+                    token = data.data.token;
+                    document.getElementById('loginResult').innerHTML = 
+                        `<span class="success">登录成功! Token: ${token.substring(0, 20)}...</span>`;
+                    log(`Token已保存`, false);
+                } else {
+                    throw new Error(data.message || '登录失败');
+                }
+            } catch (error) {
+                log(`登录失败: ${error.message}`, true);
+                document.getElementById('loginResult').innerHTML = 
+                    `<span class="error">登录失败: ${error.message}</span>`;
+            }
+        }
+        
+        async function getFiles() {
+            if (!token) {
+                alert('请先登录!');
+                return;
+            }
+            
+            log('获取文件列表...');
+            
+            try {
+                const response = await fetch(`${API_BASE_URL}/files?path=/`, {
+                    method: 'GET',
+                    headers: { 
+                        'Authorization': `Bearer ${token}`,
+                        'Content-Type': 'application/json'
+                    }
+                });
+                
+                const data = await response.json();
+                log(`文件列表响应: ${JSON.stringify(data)}`);
+                
+                if (data.success && data.data && data.data.length > 0) {
+                    const filesHtml = data.data.map(file => 
+                        `<div>${file.name} (ID: ${file.fileId}) <button onclick="document.getElementById('fileId').value='${file.fileId}'">选择</button></div>`
+                    ).join('');
+                    document.getElementById('filesResult').innerHTML = filesHtml;
+                } else {
+                    document.getElementById('filesResult').innerHTML = '没有文件';
+                }
+            } catch (error) {
+                log(`获取文件失败: ${error.message}`, true);
+                document.getElementById('filesResult').innerHTML = 
+                    `<span class="error">获取文件失败: ${error.message}</span>`;
+            }
+        }
+        
+        async function createShare() {
+            if (!token) {
+                alert('请先登录!');
+                return;
+            }
+            
+            const fileId = document.getElementById('fileId').value;
+            if (!fileId) {
+                alert('请输入文件ID!');
+                return;
+            }
+            
+            const shareData = {
+                shareName: document.getElementById('shareName').value,
+                shareDescription: '测试分享描述',
+                permission: document.getElementById('permission').value,
+                password: null,
+                expiresAt: null,
+                maxDownloads: null
+            };
+            
+            log(`准备创建分享 - 文件ID: ${fileId}`);
+            log(`请求数据: ${JSON.stringify(shareData, null, 2)}`);
+            
+            try {
+                const url = `${API_BASE_URL}/files/${fileId}/share`;
+                log(`请求URL: ${url}`);
+                
+                const response = await fetch(url, {
+                    method: 'POST',
+                    headers: { 
+                        'Authorization': `Bearer ${token}`,
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify(shareData)
+                });
+                
+                log(`响应状态: ${response.status} ${response.statusText}`);
+                
+                const responseText = await response.text();
+                log(`响应原始内容: ${responseText}`);
+                
+                let data;
+                try {
+                    data = JSON.parse(responseText);
+                } catch (e) {
+                    data = { message: responseText };
+                }
+                
+                if (response.ok && data.success) {
+                    document.getElementById('shareResult').innerHTML = 
+                        `<span class="success">分享创建成功!<br>分享链接: ${data.data.shareLink || '未返回'}</span>`;
+                    log(`分享创建成功: ${JSON.stringify(data)}`, false);
+                } else {
+                    throw new Error(data.message || `HTTP ${response.status}`);
+                }
+            } catch (error) {
+                log(`创建分享失败: ${error.message}`, true);
+                document.getElementById('shareResult').innerHTML = 
+                    `<span class="error">创建分享失败: ${error.message}</span>`;
+            }
+        }
+    </script>
+</body>
+</html>
+

@@ -1,0 +1,278 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>分享功能测试 - EasyCloudDisk</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            max-width: 800px;
+            margin: 0 auto;
+            padding: 20px;
+            background: #f5f5f5;
+        }
+        .test-section {
+            background: white;
+            padding: 20px;
+            margin: 20px 0;
+            border-radius: 8px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        }
+        .test-section h2 {
+            color: #333;
+            border-bottom: 2px solid #007bff;
+            padding-bottom: 10px;
+        }
+        .test-item {
+            margin: 15px 0;
+            padding: 10px;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+        }
+        .test-item.success {
+            border-color: #28a745;
+            background: #d4edda;
+        }
+        .test-item.error {
+            border-color: #dc3545;
+            background: #f8d7da;
+        }
+        button {
+            background: #007bff;
+            color: white;
+            border: none;
+            padding: 8px 16px;
+            border-radius: 4px;
+            cursor: pointer;
+            margin: 5px;
+        }
+        button:hover {
+            background: #0056b3;
+        }
+        input, textarea, select {
+            width: 100%;
+            padding: 8px;
+            margin: 5px 0;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+        }
+        .result {
+            margin-top: 10px;
+            padding: 10px;
+            background: #f8f9fa;
+            border-radius: 4px;
+            font-family: monospace;
+            font-size: 12px;
+        }
+    </style>
+</head>
+<body>
+    <h1>EasyCloudDisk 分享功能测试</h1>
+    
+    <div class="test-section">
+        <h2>1. 基础配置测试</h2>
+        <div class="test-item">
+            <h3>API 连接测试</h3>
+            <button onclick="testApiConnection()">测试 API 连接</button>
+            <div id="apiResult" class="result"></div>
+        </div>
+    </div>
+
+    <div class="test-section">
+        <h2>2. 分享创建测试</h2>
+        <div class="test-item">
+            <h3>创建测试分享</h3>
+            <input type="text" id="testFileId" placeholder="输入文件ID (测试用)" value="test-file-123">
+            <input type="text" id="testFileName" placeholder="文件名" value="测试文件.txt">
+            <select id="testPermission">
+                <option value="READ_ONLY">只读</option>
+                <option value="DOWNLOAD_ONLY">仅下载</option>
+                <option value="READ_WRITE">读写</option>
+            </select>
+            <input type="password" id="testPassword" placeholder="访问密码（可选）">
+            <button onclick="testCreateShare()">创建分享</button>
+            <div id="createShareResult" class="result"></div>
+        </div>
+    </div>
+
+    <div class="test-section">
+        <h2>3. 分享访问测试</h2>
+        <div class="test-item">
+            <h3>访问分享信息</h3>
+            <input type="text" id="testShareId" placeholder="输入分享ID">
+            <button onclick="testGetShareInfo()">获取分享信息</button>
+            <div id="shareInfoResult" class="result"></div>
+        </div>
+        
+        <div class="test-item">
+            <h3>验证分享密码</h3>
+            <input type="text" id="validateShareId" placeholder="分享ID">
+            <input type="password" id="validatePassword" placeholder="密码">
+            <button onclick="testValidatePassword()">验证密码</button>
+            <div id="validateResult" class="result"></div>
+        </div>
+    </div>
+
+    <div class="test-section">
+        <h2>4. 分享管理测试</h2>
+        <div class="test-item">
+            <h3>获取我的分享列表</h3>
+            <button onclick="testGetMyShares()">获取分享列表</button>
+            <div id="mySharesResult" class="result"></div>
+        </div>
+        
+        <div class="test-item">
+            <h3>取消分享</h3>
+            <input type="text" id="cancelShareId" placeholder="要取消的分享ID">
+            <button onclick="testCancelShare()">取消分享</button>
+            <div id="cancelResult" class="result"></div>
+        </div>
+    </div>
+
+    <script src="js/config.js"></script>
+    <script>
+        // 简化的API客户端
+        class TestApiClient {
+            constructor(baseURL) {
+                this.baseURL = baseURL;
+            }
+
+            async request(endpoint, options = {}) {
+                const url = `${this.baseURL}${endpoint}`;
+                const headers = {
+                    'Content-Type': 'application/json',
+                    ...options.headers
+                };
+
+                try {
+                    const response = await fetch(url, {
+                        ...options,
+                        headers
+                    });
+
+                    const data = await response.json();
+                    return { response, data };
+                } catch (error) {
+                    return { error: error.message };
+                }
+            }
+
+            async get(endpoint) {
+                return this.request(endpoint, { method: 'GET' });
+            }
+
+            async post(endpoint, body) {
+                return this.request(endpoint, {
+                    method: 'POST',
+                    body: JSON.stringify(body)
+                });
+            }
+
+            async delete(endpoint) {
+                return this.request(endpoint, { method: 'DELETE' });
+            }
+        }
+
+        const testApi = new TestApiClient(CONFIG.API_BASE_URL);
+
+        function displayResult(elementId, result) {
+            const element = document.getElementById(elementId);
+            element.textContent = JSON.stringify(result, null, 2);
+            
+            // 根据结果设置样式
+            const testItem = element.closest('.test-item');
+            testItem.classList.remove('success', 'error');
+            
+            if (result.error) {
+                testItem.classList.add('error');
+            } else if (result.data && result.data.success) {
+                testItem.classList.add('success');
+            }
+        }
+
+        async function testApiConnection() {
+            console.log('测试 API 连接...');
+            const result = await testApi.get('/health');
+            displayResult('apiResult', result);
+        }
+
+        async function testCreateShare() {
+            const shareData = {
+                shareName: document.getElementById('testFileName').value,
+                shareDescription: '这是一个测试分享',
+                permission: document.getElementById('testPermission').value,
+                password: document.getElementById('testPassword').value || null,
+                expiresAt: null,
+                maxDownloads: null
+            };
+
+            const fileId = document.getElementById('testFileId').value;
+            console.log('创建分享...', { fileId, shareData });
+            
+            const result = await testApi.post(`/files/${fileId}/share`, shareData);
+            displayResult('createShareResult', result);
+            
+            // 如果成功，保存分享ID用于后续测试
+            if (result.data && result.data.success) {
+                document.getElementById('testShareId').value = result.data.data.shareId;
+                document.getElementById('validateShareId').value = result.data.data.shareId;
+                document.getElementById('cancelShareId').value = result.data.data.shareId;
+            }
+        }
+
+        async function testGetShareInfo() {
+            const shareId = document.getElementById('testShareId').value;
+            if (!shareId) {
+                alert('请输入分享ID');
+                return;
+            }
+
+            console.log('获取分享信息...', shareId);
+            const result = await testApi.get(`/shares/${shareId}/info`);
+            displayResult('shareInfoResult', result);
+        }
+
+        async function testValidatePassword() {
+            const shareId = document.getElementById('validateShareId').value;
+            const password = document.getElementById('validatePassword').value;
+            
+            if (!shareId) {
+                alert('请输入分享ID');
+                return;
+            }
+
+            console.log('验证密码...', { shareId, password });
+            const result = await testApi.post(`/shares/${shareId}/validate`, { password });
+            displayResult('validateResult', result);
+        }
+
+        async function testGetMyShares() {
+            console.log('获取我的分享列表...');
+            const result = await testApi.get('/shares');
+            displayResult('mySharesResult', result);
+        }
+
+        async function testCancelShare() {
+            const shareId = document.getElementById('cancelShareId').value;
+            if (!shareId) {
+                alert('请输入分享ID');
+                return;
+            }
+
+            if (!confirm('确定要取消这个分享吗？')) {
+                return;
+            }
+
+            console.log('取消分享...', shareId);
+            const result = await testApi.delete(`/shares/${shareId}`);
+            displayResult('cancelResult', result);
+        }
+
+        // 页面加载时自动测试API连接
+        window.addEventListener('load', () => {
+            testApiConnection();
+        });
+    </script>
+</body>
+</html>

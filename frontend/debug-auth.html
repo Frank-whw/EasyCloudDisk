@@ -1,0 +1,214 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>认证功能调试 - EasyCloudDisk</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            max-width: 800px;
+            margin: 0 auto;
+            padding: 20px;
+            background: #f5f5f5;
+        }
+        .debug-section {
+            background: white;
+            padding: 20px;
+            margin: 20px 0;
+            border-radius: 8px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        }
+        .debug-section h2 {
+            color: #333;
+            border-bottom: 2px solid #007bff;
+            padding-bottom: 10px;
+        }
+        button {
+            background: #007bff;
+            color: white;
+            border: none;
+            padding: 10px 20px;
+            border-radius: 4px;
+            cursor: pointer;
+            margin: 5px;
+        }
+        button:hover {
+            background: #0056b3;
+        }
+        input {
+            width: 100%;
+            padding: 8px;
+            margin: 5px 0;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+        }
+        .result {
+            margin-top: 10px;
+            padding: 15px;
+            background: #f8f9fa;
+            border-radius: 4px;
+            font-family: monospace;
+            font-size: 12px;
+            white-space: pre-wrap;
+            max-height: 300px;
+            overflow-y: auto;
+        }
+        .error {
+            background: #f8d7da;
+            color: #721c24;
+        }
+        .success {
+            background: #d4edda;
+            color: #155724;
+        }
+    </style>
+</head>
+<body>
+    <h1>🔐 认证功能调试工具</h1>
+    
+    <div class="debug-section">
+        <h2>1. 后端连接测试</h2>
+        <button onclick="testBackendConnection()">测试后端连接</button>
+        <div id="backendResult" class="result"></div>
+    </div>
+
+    <div class="debug-section">
+        <h2>2. 注册测试</h2>
+        <input type="email" id="registerEmail" placeholder="邮箱" value="test@example.com">
+        <input type="password" id="registerPassword" placeholder="密码" value="password123">
+        <button onclick="testRegister()">测试注册</button>
+        <div id="registerResult" class="result"></div>
+    </div>
+
+    <div class="debug-section">
+        <h2>3. 登录测试</h2>
+        <input type="email" id="loginEmail" placeholder="邮箱" value="test@example.com">
+        <input type="password" id="loginPassword" placeholder="密码" value="password123">
+        <button onclick="testLogin()">测试登录</button>
+        <div id="loginResult" class="result"></div>
+    </div>
+
+    <div class="debug-section">
+        <h2>4. 当前认证状态</h2>
+        <button onclick="checkAuthStatus()">检查认证状态</button>
+        <button onclick="clearAuth()">清除认证信息</button>
+        <div id="authStatusResult" class="result"></div>
+    </div>
+
+    <!-- 加载脚本 -->
+    <script src="js/config.js"></script>
+    <script src="js/utils.js"></script>
+    <script src="js/api.js"></script>
+
+    <script>
+        function log(elementId, message, isError = false) {
+            const element = document.getElementById(elementId);
+            element.textContent = message;
+            element.className = `result ${isError ? 'error' : 'success'}`;
+        }
+
+        async function testBackendConnection() {
+            try {
+                log('backendResult', '正在测试后端连接...');
+                
+                const response = await fetch(`${CONFIG.API_BASE_URL}/health`);
+                const data = await response.json();
+                
+                const result = {
+                    '连接状态': response.ok ? '✅ 成功' : '❌ 失败',
+                    '状态码': response.status,
+                    '响应数据': data,
+                    'API地址': CONFIG.API_BASE_URL
+                };
+                
+                log('backendResult', JSON.stringify(result, null, 2));
+            } catch (error) {
+                log('backendResult', `后端连接失败: ${error.message}`, true);
+            }
+        }
+
+        async function testRegister() {
+            try {
+                const email = document.getElementById('registerEmail').value;
+                const password = document.getElementById('registerPassword').value;
+                
+                log('registerResult', '正在测试注册...');
+                
+                const response = await api.register(email, password);
+                
+                const result = {
+                    '注册结果': response.success ? '✅ 成功' : '❌ 失败',
+                    '响应数据': response
+                };
+                
+                log('registerResult', JSON.stringify(result, null, 2));
+            } catch (error) {
+                log('registerResult', `注册失败: ${error.message}`, true);
+            }
+        }
+
+        async function testLogin() {
+            try {
+                const email = document.getElementById('loginEmail').value;
+                const password = document.getElementById('loginPassword').value;
+                
+                log('loginResult', '正在测试登录...');
+                
+                const response = await api.login(email, password);
+                
+                const result = {
+                    '登录结果': response.success ? '✅ 成功' : '❌ 失败',
+                    '响应数据': response
+                };
+                
+                // 如果登录成功，保存token
+                if (response.success && response.data) {
+                    localStorage.setItem(CONFIG.STORAGE_KEYS.AUTH_TOKEN, response.data.token);
+                    localStorage.setItem(CONFIG.STORAGE_KEYS.USER_EMAIL, email);
+                    localStorage.setItem(CONFIG.STORAGE_KEYS.USER_ID, response.data.userId);
+                    result['Token已保存'] = '✅ 是';
+                }
+                
+                log('loginResult', JSON.stringify(result, null, 2));
+            } catch (error) {
+                log('loginResult', `登录失败: ${error.message}`, true);
+            }
+        }
+
+        function checkAuthStatus() {
+            try {
+                const authInfo = {
+                    'Token': localStorage.getItem(CONFIG.STORAGE_KEYS.AUTH_TOKEN) ? '✅ 存在' : '❌ 不存在',
+                    'Token值': localStorage.getItem(CONFIG.STORAGE_KEYS.AUTH_TOKEN),
+                    '用户邮箱': localStorage.getItem(CONFIG.STORAGE_KEYS.USER_EMAIL),
+                    '用户ID': localStorage.getItem(CONFIG.STORAGE_KEYS.USER_ID),
+                    'RefreshToken': localStorage.getItem(CONFIG.STORAGE_KEYS.REFRESH_TOKEN) ? '✅ 存在' : '❌ 不存在'
+                };
+                
+                log('authStatusResult', JSON.stringify(authInfo, null, 2));
+            } catch (error) {
+                log('authStatusResult', `检查认证状态失败: ${error.message}`, true);
+            }
+        }
+
+        function clearAuth() {
+            try {
+                localStorage.removeItem(CONFIG.STORAGE_KEYS.AUTH_TOKEN);
+                localStorage.removeItem(CONFIG.STORAGE_KEYS.USER_EMAIL);
+                localStorage.removeItem(CONFIG.STORAGE_KEYS.USER_ID);
+                localStorage.removeItem(CONFIG.STORAGE_KEYS.REFRESH_TOKEN);
+                
+                log('authStatusResult', '✅ 认证信息已清除');
+            } catch (error) {
+                log('authStatusResult', `清除认证信息失败: ${error.message}`, true);
+            }
+        }
+
+        // 页面加载时自动测试连接
+        window.addEventListener('load', () => {
+            setTimeout(testBackendConnection, 500);
+        });
+    </script>
+</body>
+</html>

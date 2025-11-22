@@ -1,0 +1,618 @@
+package com.clouddisk.client;
+
+import com.clouddisk.client.http.AuthApiClient;
+
+import com.clouddisk.client.sync.FileEvent;
+import lombok.extern.slf4j.Slf4j;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.boot.CommandLineRunner;
+import org.springframework.boot.SpringApplication;
+import org.springframework.boot.autoconfigure.SpringBootApplication;
+
+import java.nio.file.Path;
+import java.nio.file.Paths;
+import java.util.List;
+import java.util.Scanner;
+import java.util.concurrent.Executors;
+import java.util.concurrent.ScheduledExecutorService;
+import java.util.concurrent.TimeUnit;
+
+/**
+ * 客户端入口程序。
+ * <p>
+ * 负责初始化运行时上下文、执行认证、调度同步任务并提供交互式命令行界面。
+ * 所有对外部系统的调用都统一在此处进行编排，确保生命周期管理清晰。
+ */
+@Slf4j
+@SpringBootApplication
+public class ClientApplication implements CommandLineRunner {
+
+    /** 运行时上下文，封装了配置、HTTP 客户端和同步组件。 */
+    private final ClientRuntimeContext context;
+    /** 用户认证 REST 客户端。 */
+    private AuthApiClient authApiClient;
+    /** 定期执行同步任务的调度线程池。 */
+    private ScheduledExecutorService syncExecutor;
+    /** 控制交互式命令循环是否继续执行。 */
+    private volatile boolean isRunning = true;
+    /** 共享的 Scanner 实例，用于读取用户输入（不要关闭，会导致 System.in 关闭） */
+    private final Scanner scanner = new Scanner(System.in);
+
+    @Autowired
+    public ClientApplication(ClientRuntimeContext context) {
+        this.context = context;
+    }
+
+    public static void main(String[] args) {
+        SpringApplication.run(ClientApplication.class, args);
+    }
+
+    @Override
+    public void run(String... args) throws Exception {
+        log.info("启动云盘客户端...");
+
+        try {
+            // 1. 初始化上下文
+            initializeContext();
+
+            // 2. 用户认证
+            if (!authenticateUser()) {
+                log.error("用户认证失败");
+                // 给用户重新配置的机会
+                if (!handleAuthFailure()) {
+                    System.exit(1);
+                }
+            }
+
+            // 3. 启动同步循环
+            startSyncLoop();
+            
+            // 4. 启动文件监听（在认证成功后启动）
+            context.getSyncManager().startWatching();
+
+            // 5. 注册关闭钩子
+            registerShutdownHook();
+
+            // 6. 启动交互式命令行界面
+            startInteractiveMode();
+
+        } catch (Exception e) {
+            log.error("客户端启动失败", e);
+            shutdown();
+            System.exit(1);
+        }
+    }
+
+    /**
+     * 初始化运行时上下文。
+     * <p>
+     * 完成配置校验、REST 客户端构建以及目录监听器和同步管理器的准备工作。
+     */
+    private void initializeContext() {
+        log.info("初始化运行时上下文...");
+
+        context.initialize();
+
+        // 初始化API客户端（使用配置的服务器地址）
+        authApiClient = new AuthApiClient(context.getConfig().getServerUrl());
+        // FileApiClient 从 context 中获取，不需要单独初始化
+
+        log.info("运行时上下文初始化完成");
+    }
+
+    /**
+     * 根据配置或用户输入执行用户认证。
+     *
+     * @return 当登录成功并设置访问令牌时返回 {@code true}。
+     */
+    private boolean authenticateUser() {
+        log.info("开始用户认证...");
+
+        try {
+            String email = context.getConfig().getEmail();
+            String password = context.getConfig().getPassword();
+
+            if (email == null || password == null) {
+                log.info("未找到配置文件中的认证信息，使用交互式登录");
+                return interactiveLogin();
+            }
+
+            // 尝试自动登录
+            String token = authApiClient.login(email, password);
+            if (token != null) {
+                context.setToken(token);
+                context.setUserId(email); // 使用email作为userId
+                log.info("用户 {} 登录成功", email);
+                return true;
+            } else {
+                log.warn("自动登录失败，尝试交互式登录");
+                return interactiveLogin();
+            }
+
+        } catch (Exception e) {
+            log.error("认证过程发生错误: {}", e.getMessage());
+            System.out.println("连接服务器失败，请检查网络连接或服务器地址配置");
+            System.out.println("当前配置的服务器地址: " + context.getConfig().getServerUrl());
+            return false;
+        }
+    }
+
+    /**
+     * 交互式登录。
+     * <p>
+     * 支持用户选择登录或注册，并限制重试次数，防止无限循环。
+     */
+    private boolean interactiveLogin() {
+        int maxAttempts = 3;
+
+        for (int attempt = 0; attempt < maxAttempts; attempt++) {
+            System.out.println("\n=== 云盘客户端登录 ===");
+            System.out.print("请选择操作 (1-登录, 2-注册): ");
+
+            try {
+                int choice = Integer.parseInt(scanner.nextLine());
+
+                System.out.print("邮箱: ");
+                String email = scanner.nextLine();
+
+                // 密码输入循环（最多3次）
+                String password = null;
+                for (int i = 0; i < 3; i++) {
+                    System.out.print("密码: ");
+                    password = scanner.nextLine();
+
+                    // 本地校验密码长度
+                    if (password.length() < 6) {
+                        System.out.println("密码长度不能少于6位，请重新输入");
+                        if (i < 2) {
+                            System.out.println("还有 " + (2 - i) + " 次输入机会");
+                        }
+                    } else {
+                        break;
+                    }
+                }
+
+                // 如果3次密码输入都不合规，回到选择操作
+                if (password == null || password.length() < 6) {
+                    System.out.println("密码输入失败次数过多");
+                    if (attempt < maxAttempts - 1) {
+                        System.out.println("还有 " + (maxAttempts - attempt - 1) + " 次尝试机会");
+                        continue;
+                    } else {
+                        return false;
+                    }
+                }
+
+                String token;
+                if (choice == 2) {
+                    // 注册
+                    if (authApiClient.register(email, password)) {
+                        token = authApiClient.login(email, password);
+                    } else {
+                        // register() 方法已经打印了详细错误信息
+                        if (attempt < maxAttempts - 1) {
+                            System.out.println("还有 " + (maxAttempts - attempt - 1) + " 次尝试机会");
+                            continue;
+                        } else {
+                            return false;
+                        }
+                    }
+                } else {
+                    // 登录
+                    token = authApiClient.login(email, password);
+                }
+
+                if (token != null) {
+                    context.setToken(token);
+                    context.setUserId(email);
+                    // 设置文件API客户端的认证令牌
+                    context.getFileApiClient().setAuthToken(token);
+                    log.info("用户 {} 登录成功", email);
+                    return true;
+                } else {
+                    System.out.println("认证失败");
+                    if (attempt < maxAttempts - 1) {
+                        System.out.println("还有 " + (maxAttempts - attempt - 1) + " 次尝试机会");
+                        continue;
+                    } else {
+                        return false;
+                    }
+                }
+
+            } catch (NumberFormatException e) {
+                System.out.println("输入无效，请输入 1 或 2");
+                if (attempt < maxAttempts - 1) {
+                    System.out.println("还有 " + (maxAttempts - attempt - 1) + " 次尝试机会");
+                    continue;
+                } else {
+                    return false;
+                }
+            } catch (Exception e) {
+                log.error("交互式登录过程出错", e);
+                if (attempt < maxAttempts - 1) {
+                    System.out.println("还有 " + (maxAttempts - attempt - 1) + " 次尝试机会");
+                    continue;
+                } else {
+                    return false;
+                }
+            }
+        }
+
+        return false;
+    }
+
+    /**
+     * 处理认证失败的情况。
+     * <p>
+     * 提供用户重新配置认证信息的机会。
+     */
+    private boolean handleAuthFailure() {
+
+        System.out.println("\n=== 认证失败 ===");
+        System.out.println("请检查配置文件中的认证信息，或重新输入认证信息。");
+        System.out.println("可用操作:");
+        System.out.println("  1 - 重新输入认证信息");
+        System.out.println("  2 - 退出程序");
+        System.out.println();
+
+        while (true) {
+            System.out.print("> ");
+            String input = scanner.nextLine().trim();
+
+            if (input.isEmpty()) {
+                continue;
+            }
+
+            String[] parts = input.split("\\s+");
+            String command = parts[0].toLowerCase();
+
+            try {
+                switch (command) {
+                    case "1":
+                        return interactiveLogin();
+                    case "2":
+                        return false;
+                    default:
+                        System.out.println("未知命令: " + command);
+                        System.out.println("输入 '1' 或 '2' 选择操作");
+                }
+            } catch (Exception e) {
+                log.error("执行命令失败: " + command, e);
+                System.out.println("执行命令失败: " + e.getMessage());
+            }
+        }
+    }
+
+    /**
+     * 启动文件同步循环，负责调度初始同步和周期性同步任务。
+     */
+    private void startSyncLoop() {
+        log.info("启动文件同步服务...");
+
+        if (!context.getConfig().isEnableAutoSync()) {
+            log.info("自动同步已禁用");
+            return;
+        }
+
+        syncExecutor = Executors.newSingleThreadScheduledExecutor();
+
+        // 立即执行一次同步
+        syncExecutor.execute(() -> {
+            try {
+                performSync();
+            } catch (Exception e) {
+                log.error("初始同步失败", e);
+            }
+        });
+
+        // 定期执行同步（每30秒）
+        syncExecutor.scheduleWithFixedDelay(() -> {
+            try {
+                if (isRunning) {
+                    performSync();
+                }
+            } catch (Exception e) {
+                log.error("定期同步失败", e);
+            }
+        }, 30, 30, TimeUnit.SECONDS);
+
+        log.info("文件同步服务已启动");
+    }
+
+    /**
+     * 执行同步操作，委托 {@link com.clouddisk.client.sync.SyncManager} 完成实际同步工作。
+     */
+    private void performSync() {
+        try {
+            log.debug("开始文件同步...");
+
+            if (context != null && context.getSyncManager() != null) {
+                // 同步远程变更
+                context.getSyncManager().synchronizeRemoteChanges();
+            } else {
+                log.warn("同步管理器未初始化");
+            }
+
+            log.debug("文件同步完成");
+
+        } catch (Exception e) {
+            log.error("同步操作失败", e);
+        }
+    }
+
+    /**
+     * 启动交互式命令行界面并处理用户输入的命令。
+     */
+    private void startInteractiveMode() {
+
+        System.out.println("\n=== 云盘客户端已启动 ===");
+        System.out.println("可用命令:");
+        System.out.println("  sync - 手动同步文件");
+        System.out.println("  list - 查看文件列表");
+        System.out.println("  upload <文件名> - 上传文件");
+        System.out.println("  download <文件名> - 下载文件");
+        System.out.println("  delete <文件名> - 删除文件");
+        System.out.println("  status - 查看状态");
+        System.out.println("  help - 显示帮助");
+        System.out.println("  exit - 退出程序");
+        System.out.println();
+
+        while (isRunning) {
+            System.out.print("> ");
+            String input = scanner.nextLine().trim();
+
+            if (input.isEmpty()) {
+                continue;
+            }
+
+            String[] parts = input.split("\\s+");
+            String command = parts[0].toLowerCase();
+
+            try {
+                switch (command) {
+                    case "sync":
+                        performSync();
+                        break;
+                    case "list":
+                        listFiles();
+                        break;
+                    case "upload":
+                        if (parts.length > 1) {
+                            uploadFile(parts[1]);
+                        } else {
+                            System.out.println("用法: upload <文件名>");
+                        }
+                        break;
+                    case "download":
+                        if (parts.length > 1) {
+                            downloadFile(parts[1]);
+                        } else {
+                            System.out.println("用法: download <文件名>");
+                        }
+                        break;
+                    case "delete":
+                        if (parts.length > 1) {
+                            deleteFile(parts[1]);
+                        } else {
+                            System.out.println("用法: delete <文件名>");
+                        }
+                        break;
+                    case "status":
+                        showStatus();
+                        break;
+                    case "help":
+                        showHelp();
+                        break;
+                    case "exit":
+                        shutdown();
+                        break;
+                    default:
+                        System.out.println("未知命令: " + command);
+                        System.out.println("输入 'help' 查看可用命令");
+                }
+            } catch (Exception e) {
+                log.error("执行命令失败: " + command, e);
+                System.out.println("执行命令失败: " + e.getMessage());
+            }
+        }
+    }
+
+    /**
+     * 列出文件。
+     */
+    private void listFiles() {
+        try {
+            System.out.println("\n=== 云盘文件 ===");
+
+            List<com.clouddisk.client.model.FileResponse> files = context.getFileApiClient().listFiles();
+
+            if (files == null || files.isEmpty()) {
+                System.out.println("云盘中还没有文件,可以使用 upload 命令上传文件\n");
+                return;
+            }
+
+            System.out.printf("%-40s %-15s %-20s%n", "文件名", "大小", "更新时间");
+            System.out.println("------------------------------------------------------------------------------------");
+
+            for (com.clouddisk.client.model.FileResponse file : files) {
+                String name = file.getName() != null ? file.getName() : "未知";
+                String size = file.getFormattedSize();
+                String time = file.getDisplayTime();
+
+                System.out.printf("%-40s %-15s %-20s%n", name, size, time);
+            }
+
+            System.out.println("------------------------------------------------------------------------------------");
+            System.out.println("总计: " + files.size() + " 个文件\n");
+
+        } catch (Exception e) {
+            log.error("列出文件失败", e);
+            System.out.println("列出文件失败: " + e.getMessage());
+        }
+    }
+
+    /**
+     * 上传文件。
+     */
+    private void uploadFile(String filename) {
+        try {
+            Path filePath = Paths.get(context.getConfig().getSyncDir(), filename);
+            // 检查文件是否存在
+            if (!filePath.toFile().exists()) {
+                System.out.println("文件不存在: " + filename);
+                System.out.println("请确保文件存在于同步目录中: " + context.getConfig().getSyncDir());
+                return;
+            }
+            context.getSyncManager().handleLocalEvent(
+                    new FileEvent(FileEvent.EventType.CREATE, filePath, null)
+            );
+            System.out.println("文件上传任务已提交: " + filename);
+        } catch (Exception e) {
+            log.error("上传文件失败: " + filename, e);
+            System.out.println("上传文件失败: " + e.getMessage());
+        }
+    }
+
+    /**
+     * 下载文件到本地同步目录。
+     */
+    private void downloadFile(String filename) {
+        try {
+            // 从服务器列表查找目标文件
+            List<com.clouddisk.client.model.FileResponse> files = context.getFileApiClient().listFiles();
+            if (files == null || files.isEmpty()) {
+                System.out.println("云盘中还没有文件");
+                return;
+            }
+
+            com.clouddisk.client.model.FileResponse target = null;
+            for (com.clouddisk.client.model.FileResponse f : files) {
+                if (f.getName() != null && f.getName().equals(filename)) {
+                    target = f;
+                    break;
+                }
+            }
+
+            if (target == null) {
+                System.out.println("未找到文件: " + filename);
+                return;
+            }
+
+            // 构造目标保存路径（保存到同步目录）
+            Path targetPath = Paths.get(context.getConfig().getSyncDir(), filename);
+
+            // 调用下载接口
+            boolean ok = context.getFileApiClient().downloadFile(
+                    target.getFileId().toString(), targetPath);
+            if (ok) {
+                System.out.println("下载成功: " + targetPath.toAbsolutePath());
+            } else {
+                System.out.println("下载失败: " + filename);
+            }
+        } catch (Exception e) {
+            log.error("下载文件失败: {}", filename, e);
+            System.out.println("下载文件失败: " + e.getMessage());
+        }
+    }
+
+    /**
+     * 删除文件。
+     */
+    private void deleteFile(String filename) {
+        try {
+            // 从服务器列表查找目标文件
+            List<com.clouddisk.client.model.FileResponse> files = context.getFileApiClient().listFiles();
+            if (files == null || files.isEmpty()) {
+                System.out.println("云盘中还没有文件");
+                return;
+            }
+
+            com.clouddisk.client.model.FileResponse target = null;
+            for (com.clouddisk.client.model.FileResponse f : files) {
+                if (f.getName() != null && f.getName().equals(filename)) {
+                    target = f;
+                    break;
+                }
+            }
+
+            if (target == null) {
+                System.out.println("未找到文件: " + filename);
+                return;
+            }
+
+            boolean ok = context.getFileApiClient().deleteFile(target.getFileId().toString());
+            if (ok) {
+                System.out.println("删除成功: " + filename);
+            } else {
+                System.out.println("删除失败: " + filename);
+            }
+        } catch (Exception e) {
+            log.error("删除文件失败: {}", filename, e);
+            System.out.println("删除文件失败: " + e.getMessage());
+        }
+    }
+
+    /**
+     * 显示状态。
+     */
+    private void showStatus() {
+        System.out.println("=== 客户端状态 ===");
+        System.out.println("用户: " + context.getUserId());
+        System.out.println("同步目录: " + context.getConfig().getSyncDir());
+        System.out.println("自动同步: " + (context.getConfig().isEnableAutoSync() ? "开启" : "关闭"));
+        System.out.println("压缩策略: " + context.getConfig().getCompressStrategy());
+        System.out.println("运行状态: " + (isRunning ? "正常" : "停止"));
+    }
+
+    /**
+     * 显示帮助。
+     */
+    private void showHelp() {
+        System.out.println("=== 帮助信息 ===");
+        System.out.println("sync - 手动同步文件");
+        System.out.println("list - 查看文件列表");
+        System.out.println("upload <文件名> - 上传文件");
+        System.out.println("download <文件名> - 下载文件");
+        System.out.println("delete <文件名> - 删除文件");
+        System.out.println("status - 查看状态");
+        System.out.println("help - 显示帮助");
+        System.out.println("exit - 退出程序");
+    }
+
+    /**
+     * 注册关闭钩子。
+     */
+    private void registerShutdownHook() {
+        Runtime.getRuntime().addShutdownHook(new Thread(() -> {
+            log.info("接收到关闭信号，正在清理资源...");
+            shutdown();
+        }));
+    }
+
+    /**
+     * 关闭客户端并释放资源。
+     */
+    private void shutdown() {
+        log.info("正在关闭客户端...");
+        isRunning = false;
+
+        if (syncExecutor != null && !syncExecutor.isShutdown()) {
+            syncExecutor.shutdown();
+            try {
+                if (!syncExecutor.awaitTermination(5, TimeUnit.SECONDS)) {
+                    syncExecutor.shutdownNow();
+                }
+            } catch (InterruptedException e) {
+                syncExecutor.shutdownNow();
+                Thread.currentThread().interrupt();
+            }
+        }
+
+        if (context != null) {
+            context.shutdown();
+        }
+
+        log.info("客户端已关闭");
+        System.exit(0);
+    }
+}

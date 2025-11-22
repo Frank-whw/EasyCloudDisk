@@ -1,0 +1,110 @@
+server:
+  port: 8080
+  address: 0.0.0.0  # 绑定到所有网络接口，允许外部访问
+  servlet:
+    context-path: /api
+
+spring:
+  application:
+    name: clouddisk-server
+  servlet:
+    multipart:
+      max-file-size: 100MB
+      max-request-size: 100MB
+  # 默认配置 (如果没有指定profile，默认使用dev)
+  datasource:
+    url: jdbc:h2:mem:testdb
+    username: sa
+    password:
+    driver-class-name: org.h2.Driver
+  jpa:
+    hibernate:
+      ddl-auto: create-drop
+    show-sql: false
+    properties:
+      hibernate:
+        format_sql: true
+  h2:
+    console:
+      enabled: true
+
+# JWT配置（通用）
+jwt:
+  # 默认提供强随机密钥（建议生产环境通过环境变量 JWT_SECRET 覆盖）
+  secret: ${JWT_SECRET:4f6d7a8c9b1e2d3c4a5b6c7d8e9f00112233445566778899aabbccddeeff0011}
+  expiration: 86400000 # 24小时
+
+app:
+  cors:
+    # 生产环境CORS配置
+    allowed-origins: ${APP_CORS_ALLOWED_ORIGINS:http://118.178.16.137,https://118.178.16.137,http://localhost:3000}
+    allow-credentials: ${APP_CORS_ALLOW_CREDENTIALS:true}
+
+# 阿里云OSS配置
+oss:
+  access-key-id: ${OSS_ACCESS_KEY_ID}
+  access-key-secret: ${OSS_ACCESS_KEY_SECRET}
+  endpoint: ${OSS_ENDPOINT:https://oss-cn-beijing.aliyuncs.com}
+  bucket-name: ${OSS_BUCKET_NAME:hppnw}
+
+# 日志配置(生产环境)
+logging:
+  level:
+    root: INFO
+    com.clouddisk: INFO
+    com.clouddisk.storage: WARN
+    com.aliyun.oss: WARN
+  pattern:
+    console: "%d{HH:mm:ss.SSS} [%thread] %-5level %logger{36} - %msg%n"
+    file: "%d{yyyy-MM-dd HH:mm:ss.SSS} [%thread] %-5level %logger{36} - %msg%n"
+  file:
+    name: logs/server.log
+
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health,info
+
+---
+# 开发环境配置 (H2内存数据库)
+spring:
+  config:
+    activate:
+      on-profile: dev
+  datasource:
+    url: jdbc:h2:mem:testdb
+    username: sa
+    password:
+    driver-class-name: org.h2.Driver
+  jpa:
+    hibernate:
+      ddl-auto: create-drop  # 开发环境每次重启重新创建表
+    show-sql: false
+    properties:
+      hibernate:
+        format_sql: true
+  h2:
+    console:
+      enabled: true  # 启用H2控制台
+
+---
+# 生产环境配置 (PostgreSQL)
+spring:
+  config:
+    activate:
+      on-profile: prod
+  datasource:
+    url: jdbc:postgresql://localhost:5432/clouddisk
+    username: clouddisk_user
+    password: clouddisk123  # 请修改为实际密码
+    driver-class-name: org.postgresql.Driver
+  jpa:
+    hibernate:
+      ddl-auto: update  # 生产环境使用update
+    show-sql: false
+    properties:
+      hibernate:
+        # PostgreSQL数据库方言
+        dialect: org.hibernate.dialect.PostgreSQLDialect
+        format_sql: true

@@ -1,0 +1,26 @@
+client:
+  # 服务端 URL 与同步目录
+  serverUrl: ${CLIENT_SERVER_URL:http://ec2-54-95-61-230.ap-northeast-1.compute.amazonaws.com:8080}
+  syncDir: ${CLIENT_SYNC_DIR:./local}
+  compressStrategy: ${CLIENT_COMPRESS_STRATEGY:zip}
+  enableAutoSync: ${CLIENT_ENABLE_AUTO_SYNC:true}
+  enableS3DirectUpload: ${CLIENT_ENABLE_S3_DIRECT_UPLOAD:true}  # 设为false通过后端API上传，true直接上传S3
+  email: ${CLIENT_EMAIL:2079685390@qq.com} # 改成自己的
+  password: ${CLIENT_PASSWORD:kobebryant24} # 改成自己的
+  
+  # S3 配置
+  s3Bucket: ${S3_BUCKET:ecnu-cloudsys}
+  s3Region: ${S3_REGION:ap-east-1}
+  s3Endpoint: ${S3_ENDPOINT:https://s3.ap-east-1.amazonaws.com}
+  s3PathStyle: ${S3_PATH_STYLE:true}
+  s3PartSizeMb: ${S3_PART_SIZE_MB:5}
+  s3MaxRetries: ${S3_MAX_RETRIES:3}
+  
+  # HTTP 客户端配置（S3 SDK 使用）
+  httpMaxConnections: ${AWS_HTTP_MAX_CONNECTIONS:64}
+  httpConnTimeoutMs: ${AWS_HTTP_CONNECTION_TIMEOUT_MS:10000}
+  httpReadTimeoutMs: ${AWS_HTTP_READ_TIMEOUT_MS:60000}
+
+spring:
+  main:
+    allow-bean-definition-overriding: true
