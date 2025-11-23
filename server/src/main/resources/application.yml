@@ -42,8 +42,8 @@ app:
 
 # 阿里云OSS配置
 oss:
-  access-key-id: LTAI5tDAGmspKbptW5Jo1P8w
-  access-key-secret: v8XkJ4dfqz8QN5Tg2Se6hQLWBPkfWU
+  access-key-id: ${OSS_ACCESS_KEY_ID}
+  access-key-secret: ${OSS_ACCESS_KEY_SECRET}
   endpoint: ${OSS_ENDPOINT:https://oss-cn-beijing.aliyuncs.com}
   bucket-name: ${OSS_BUCKET_NAME:hppnw}
 
