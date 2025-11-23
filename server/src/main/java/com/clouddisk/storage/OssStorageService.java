@@ -14,6 +14,7 @@ import org.springframework.web.multipart.MultipartFile;
 import java.io.ByteArrayInputStream;
 import java.io.IOException;
 import java.io.InputStream;
+import java.util.zip.GZIPInputStream;
 
 /**
  * Alibaba Cloud OSS storage service implementation.
@@ -74,11 +75,22 @@ public class OssStorageService implements StorageService {
     public InputStream loadFile(String storageKey, boolean decompress) {
         try {
             OSSObject ossObject = ossClient.getObject(ossProperties.getBucketName(), storageKey);
+            InputStream inputStream = ossObject.getObjectContent();
             log.info("File loaded successfully: {}", storageKey);
-            return ossObject.getObjectContent();
+            
+            if (decompress) {
+                // 如果需要解压缩，使用GZIPInputStream
+                inputStream = new GZIPInputStream(inputStream);
+                log.debug("File decompressed: {}", storageKey);
+            }
+            
+            return inputStream;
         } catch (OSSException e) {
             log.error("Failed to load file: {}", storageKey, e);
             throw new RuntimeException("OSS 文件加载失败", e);
+        } catch (IOException e) {
+            log.error("Failed to decompress file: {}", storageKey, e);
+            throw new RuntimeException("OSS 文件解压缩失败", e);
         }
     }
 

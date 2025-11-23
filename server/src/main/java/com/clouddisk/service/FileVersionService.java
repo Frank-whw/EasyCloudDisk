@@ -119,7 +119,7 @@ public class FileVersionService {
         
         return ResponseEntity.ok()
             .headers(headers -> headers.setContentDisposition(contentDisposition))
-            .contentType(MediaType.APPLICATION_OCTET_STREAM)
+            .contentType(getContentTypeForFile(file.getName()))
             .body(resource);
     }
     
@@ -214,5 +214,44 @@ public class FileVersionService {
         dto.setVersion(entity.getVersion());
         dto.setUpdatedAt(entity.getUpdatedAt());
         return dto;
+    }
+
+    /**
+     * 根据文件扩展名获取合适的Content-Type
+     */
+    private MediaType getContentTypeForFile(String fileName) {
+        if (fileName == null || fileName.isEmpty()) {
+            return MediaType.APPLICATION_OCTET_STREAM;
+        }
+
+        String extension = fileName.toLowerCase();
+        if (extension.endsWith(".txt") || extension.endsWith(".md") ||
+            extension.endsWith(".log") || extension.endsWith(".csv")) {
+            return MediaType.TEXT_PLAIN;
+        } else if (extension.endsWith(".html") || extension.endsWith(".htm")) {
+            return MediaType.TEXT_HTML;
+        } else if (extension.endsWith(".css")) {
+            return MediaType.valueOf("text/css");
+        } else if (extension.endsWith(".js")) {
+            return MediaType.valueOf("application/javascript");
+        } else if (extension.endsWith(".json")) {
+            return MediaType.APPLICATION_JSON;
+        } else if (extension.endsWith(".xml")) {
+            return MediaType.APPLICATION_XML;
+        } else if (extension.endsWith(".pdf")) {
+            return MediaType.APPLICATION_PDF;
+        } else if (extension.endsWith(".jpg") || extension.endsWith(".jpeg")) {
+            return MediaType.IMAGE_JPEG;
+        } else if (extension.endsWith(".png")) {
+            return MediaType.IMAGE_PNG;
+        } else if (extension.endsWith(".gif")) {
+            return MediaType.IMAGE_GIF;
+        } else if (extension.endsWith(".zip")) {
+            return MediaType.valueOf("application/zip");
+        } else if (extension.endsWith(".rar")) {
+            return MediaType.valueOf("application/x-rar-compressed");
+        } else {
+            return MediaType.APPLICATION_OCTET_STREAM;
+        }
     }
 }
